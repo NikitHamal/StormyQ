@@ -47,6 +47,7 @@ public class QnAProcessor {
     private final RuleEngine ruleEngine;
     private final ConceptualKnowledgeBase conceptualKnowledgeBase;
     private final AnswerExtractor answerExtractor;
+    private final QualityAssurance qualityAssurance;
 
     private final DynamicMemoryBuffer memoryBuffer;
     private final StringBuilder reasoningSummary;
@@ -74,6 +75,7 @@ public class QnAProcessor {
         this.ruleEngine = new RuleEngine(this.reasoningSummary, this.activationThreshold);
         this.conceptualKnowledgeBase = new ConceptualKnowledgeBase(this.reasoningSummary);
         this.answerExtractor = new AnswerExtractor(this.reasoningSummary, this.activationThreshold, SENTIMENT_BOOST_FACTOR);
+        this.qualityAssurance = new QualityAssurance();
 
         this.memoryBuffer = new DynamicMemoryBuffer();
         this.recentConfidences = new LinkedList<>();
@@ -123,8 +125,9 @@ public class QnAProcessor {
         // 6. Select the best answer
         AnswerResult currentAnswer = selectBestAnswer(rankedCandidates, context);
 
-        // 7. Perform meta-cognition
+        // 7. Perform meta-cognition and quality assurance
         performMetaCognition(context, question, currentAnswer);
+        validateAnswer(currentAnswer, question, context);
 
         return currentAnswer;
     }
@@ -196,6 +199,22 @@ public class QnAProcessor {
             reasoningSummary.append("[Memory Buffer] Answer added to memory.\n");
         } else {
             reasoningSummary.append("[Memory Buffer] Answer not valid enough to be added to memory.\n");
+        }
+    }
+
+    /**
+     * Validates the answer and adds the validation result to the reasoning summary.
+     * @param answer The answer to validate.
+     * @param question The question.
+     * @param context The context.
+     */
+    private void validateAnswer(AnswerResult answer, String question, String context) {
+        reasoningSummary.append("\n--- Answer Quality Assurance ---\n");
+        if (qualityAssurance.isAnswerGood(answer, question, context)) {
+            reasoningSummary.append("Answer quality: Good\n");
+        } else {
+            reasoningSummary.append("Answer quality: Needs improvement\n");
+            reasoningSummary.append("Suggestion: ").append(qualityAssurance.getImprovementSuggestion(answer, question, context)).append("\n");
         }
     }
 
