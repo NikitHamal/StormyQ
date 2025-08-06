@@ -1,0 +1,154 @@
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:fillViewport="true"
+	android:background="@android:color/white">
+	<LinearLayout
+		android:id="@+id/linear1"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:padding="20dp"
+		android:orientation="vertical">
+		<TextView
+			android:id="@+id/textview1"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="28dp"
+			android:gravity="center_horizontal|center_vertical"
+			android:text="@string/app_name"
+			android:textSize="20sp"
+			android:textStyle="bold"
+			android:textColor="@color/colorPrimary"
+			android:fontFamily="sans-serif-medium" />
+		<TextView
+			android:id="@+id/textview2"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="8dp"
+			android:text="Context"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<EditText
+			android:id="@+id/contextEditText"
+			android:layout_width="match_parent"
+			android:layout_height="160dp"
+			android:padding="12dp"
+			android:background="@drawable/edittext_background"
+			android:gravity="top"
+			android:textSize="14sp"
+			android:textColor="@color/text_color"
+			android:hint="@string/context_hint"
+			android:textColorHint="@color/secondary_text"
+			android:inputType="textMultiLine|textCapSentences"
+			android:scrollbars="vertical"
+			android:maxLength="5000" />
+		<Button
+			android:id="@+id/loadDocumentButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:text="Load Document"
+			android:textSize="14sp"
+			android:textColor="@android:color/white"
+			android:backgroundTint="#4CAF50"
+			android:textAllCaps="false"
+			android:elevation="4dp"
+			app:cornerRadius="8dp" />
+		<TextView
+			android:id="@+id/textview3"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="8dp"
+			android:text="Question"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<EditText
+			android:id="@+id/questionEditText"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:padding="12dp"
+			android:background="@drawable/edittext_background"
+			android:textSize="14sp"
+			android:textColor="@color/text_color"
+			android:hint="@string/question_hint"
+			android:textColorHint="@color/secondary_text"
+			android:singleLine="true"
+			android:inputType="textCapSentences"
+			android:maxLines="1" />
+		<LinearLayout
+			android:id="@+id/linear2"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="32dp"
+			android:orientation="horizontal"
+			android:weightSum="2">
+			<Button
+				android:id="@+id/askButton"
+				android:layout_width="0dp"
+				android:layout_height="52dp"
+				android:text="@string/ask_button"
+				android:textSize="14sp"
+				android:layout_weight="1"
+				android:textColor="@android:color/white"
+				android:layout_marginEnd="8dp"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				android:elevation="4dp"
+				app:cornerRadius="8dp" />
+			<Button
+				android:id="@+id/trainButton"
+				android:layout_width="0dp"
+				android:layout_height="52dp"
+				android:text="Train AI"
+				android:textSize="14sp"
+				android:layout_weight="1"
+				android:textColor="@android:color/white"
+				android:layout_marginStart="8dp"
+				android:backgroundTint="#2196F3"
+				android:textAllCaps="false"
+				android:elevation="4dp"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/textview4"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="32dp"
+			android:layout_marginBottom="8dp"
+			android:text="Answer"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear3"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<TextView
+				android:id="@+id/resultTextView"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:text="@string/default_result"
+				android:textSize="16sp"
+				android:textColor="@color/secondary_text"
+				android:justificationMode="inter_word" />
+			<TextView
+				android:id="@+id/confidenceTextView"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="12dp"
+				android:text="Confidence: N/A"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text"
+				android:visibility="gone" />
+		</LinearLayout>
+	</LinearLayout>
+</ScrollView>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Remove color overrides to use default Material3 colors -->
+        <item name="android:fontFamily">@font/reg</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="AppTheme.FullScreen" parent="AppTheme">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <style name="AppTheme.PopupOverlay" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <!-- Style for the Spinner in TrainActivity -->
+    <style name="SpinnerStyle" parent="Widget.AppCompat.Spinner">
+        <item name="android:background">@drawable/edittext_background</item>
+        <item name="android:popupBackground">@android:color/white</item>
+        <item name="android:paddingLeft">8dp</item>
+        <item name="android:paddingRight">8dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:overlapAnchor">false</item>
+        <!-- You might need to adjust item android:dropDownVerticalOffset here for exact positioning -->
+    </style>
+
+</resources>

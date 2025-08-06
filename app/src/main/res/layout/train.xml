@@ -1,0 +1,615 @@
+<ScrollView
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:fillViewport="true"
+	android:background="@android:color/white">
+	<LinearLayout
+		android:id="@+id/linear1"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:padding="20dp"
+		android:orientation="vertical">
+		<TextView
+			android:id="@+id/trainTitleTextView"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="28dp"
+			android:gravity="center_horizontal|center_vertical"
+			android:text="AI Training &amp; Monitoring"
+			android:textSize="20sp"
+			android:textStyle="bold"
+			android:textColor="@color/colorPrimary"
+			android:fontFamily="sans-serif-medium" />
+		<TextView
+			android:id="@+id/textview1"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="8dp"
+			android:text="Import Training Data (JSON)"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear2"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<TextView
+				android:id="@+id/textview2"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="8dp"
+				android:text="Upload a JSON file to update AI parameters, word lists, rules, and conceptual relations."
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<Button
+				android:id="@+id/importJsonButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Import JSON File"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorAccent"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/textview3"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="8dp"
+			android:text="AI Core Parameters"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear3"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<TextView
+				android:id="@+id/textview4"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Decay Rate (0.0 - 1.0):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/decayRateEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="e.g., 0.1"
+				android:textColorHint="#607D8B"
+				android:inputType="numberDecimal" />
+			<TextView
+				android:id="@+id/textview5"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="12dp"
+				android:text="Activation Threshold (0.0 - 1.0):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/activationThresholdEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="e.g., 0.05"
+				android:textColorHint="#607D8B"
+				android:inputType="numberDecimal" />
+			<Button
+				android:id="@+id/saveParametersButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="16dp"
+				android:text="Save Parameters"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/textview6"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="8dp"
+			android:text="AI Word Lists"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear4"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<TextView
+				android:id="@+id/textview7"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Stop Words (comma-separated):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/stopWordsEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="word1, word2, ..."
+				android:textColorHint="#607D8B"
+				android:inputType="textMultiLine"
+				android:minLines="2" />
+			<Button
+				android:id="@+id/updateStopWordsButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Update Stop Words"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview8"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="16dp"
+				android:text="Negation Words (comma-separated):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/negationWordsEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="word1, word2, ..."
+				android:textColorHint="#607D8B"
+				android:inputType="textMultiLine"
+				android:minLines="2" />
+			<Button
+				android:id="@+id/updateNegationWordsButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Update Negation Words"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview9"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="16dp"
+				android:text="Positive Words (comma-separated):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/positiveWordsEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="word1, word2, ..."
+				android:textColorHint="#607D8B"
+				android:inputType="textMultiLine"
+				android:minLines="2" />
+			<Button
+				android:id="@+id/updatePositiveWordsButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Update Positive Words"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview10"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="16dp"
+				android:text="Negative Words (comma-separated):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/negativeWordsEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="word1, word2, ..."
+				android:textColorHint="#607D8B"
+				android:inputType="textMultiLine"
+				android:minLines="2" />
+			<Button
+				android:id="@+id/updateNegativeWordsButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Update Negative Words"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/textview11"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="8dp"
+			android:text="AI Rules Management"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear5"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<TextView
+				android:id="@+id/textview12"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Add New Rule:"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/newRuleConditionsEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Conditions (comma-separated, stemmed)"
+				android:textColorHint="#607D8B" />
+			<EditText
+				android:id="@+id/newRuleConsequenceEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Consequence (stemmed)"
+				android:textColorHint="#607D8B" />
+			<EditText
+				android:id="@+id/newRuleConfidenceEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Confidence (0.0 - 1.0)"
+				android:textColorHint="#607D8B"
+				android:inputType="numberDecimal" />
+			<EditText
+				android:id="@+id/newRuleDescriptionEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Description (optional)"
+				android:textColorHint="#607D8B" />
+			<Button
+				android:id="@+id/addRuleButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="16dp"
+				android:text="Add Rule"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview13"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="20dp"
+				android:text="Remove Existing Rule (by Description):"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/removeRuleDescriptionEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Rule Description to Remove"
+				android:textColorHint="#607D8B" />
+			<Button
+				android:id="@+id/removeRuleButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Remove Rule"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@android:color/holo_red_dark"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview14"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="20dp"
+				android:text="Current Rules:"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<TextView
+				android:id="@+id/currentRulesTextView"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:text="No rules added yet."
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:minLines="3" />
+			<Button
+				android:id="@+id/refreshRulesButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Refresh Rules"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/textview15"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="8dp"
+			android:text="AI Conceptual Relations"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear6"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<TextView
+				android:id="@+id/textview16"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Add New Relation:"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/newRelationSourceEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Source Concept (stemmed)"
+				android:textColorHint="#607D8B" />
+			<EditText
+				android:id="@+id/newRelationTargetEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Target Concept (stemmed)"
+				android:textColorHint="#607D8B" />
+			<Spinner
+				android:id="@+id/newRelationTypeSpinner"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:spinnerMode="dropdown"
+				style="@style/SpinnerStyle" />
+			<EditText
+				android:id="@+id/newRelationStrengthEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Strength (0.0 - 1.0)"
+				android:textColorHint="#607D8B"
+				android:inputType="numberDecimal" />
+			<Button
+				android:id="@+id/addRelationButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="16dp"
+				android:text="Add Relation"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview17"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="20dp"
+				android:text="Remove Existing Relation:"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<EditText
+				android:id="@+id/removeRelationSourceEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Source Concept (stemmed)"
+				android:textColorHint="#607D8B" />
+			<EditText
+				android:id="@+id/removeRelationTargetEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:hint="Target Concept (stemmed)"
+				android:textColorHint="#607D8B" />
+			<Spinner
+				android:id="@+id/removeRelationTypeSpinner"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:spinnerMode="dropdown"
+				style="@style/SpinnerStyle" />
+			<Button
+				android:id="@+id/removeRelationButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Remove Relation"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@android:color/holo_red_dark"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<TextView
+				android:id="@+id/textview18"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="20dp"
+				android:text="Current Relations:"
+				android:textSize="14sp"
+				android:textColor="@color/secondary_text" />
+			<TextView
+				android:id="@+id/currentRelationsTextView"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="4dp"
+				android:padding="8dp"
+				android:background="@drawable/edittext_background"
+				android:text="No relations added yet."
+				android:textSize="14sp"
+				android:textColor="@color/text_color"
+				android:minLines="3" />
+			<Button
+				android:id="@+id/refreshRelationsButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="8dp"
+				android:text="Refresh Relations"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@color/colorPrimary"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/textview19"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="8dp"
+			android:text="Reset Options"
+			android:textSize="18sp"
+			android:textColor="@color/text_color"
+			android:fontFamily="sans-serif-medium" />
+		<LinearLayout
+			android:id="@+id/linear7"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="12dp"
+			android:background="@drawable/answer_background"
+			android:orientation="vertical">
+			<Button
+				android:id="@+id/resetKnowledgeBaseButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="Reset Knowledge Base (Rules &amp; Relations)"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@android:color/holo_red_dark"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+			<Button
+				android:id="@+id/resetAdaptiveParametersButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginTop="12dp"
+				android:text="Reset Adaptive Parameters &amp; Memory"
+				android:textSize="14sp"
+				android:textColor="@android:color/white"
+				android:backgroundTint="@android:color/holo_red_dark"
+				android:textAllCaps="false"
+				app:cornerRadius="8dp" />
+		</LinearLayout>
+	</LinearLayout>
+</ScrollView>

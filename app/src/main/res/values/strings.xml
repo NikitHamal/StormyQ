@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">StormyQ</string>
+    <string name="context_hint">Paste your article, document, or any text here...</string>
+    <string name="question_hint">Ask a question about the text above</string>
+    <string name="ask_button">Find Answer</string>
+    <string name="default_result">The answer will appear here...</string>
+    <string name="no_answer_found">I couldn\'t find an answer to that in the text.</string>
+    <string name="empty_context_warning">Please provide some text first</string>
+    <string name="empty_question_warning">Please ask a question</string>
+</resources>

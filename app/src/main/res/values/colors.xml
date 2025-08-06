@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<resources>
+<color name="colorPrimary">#007FAC</color>
+<color name="colorPrimaryDark">#007FAC</color>
+<color name="colorAccent">#007FAC</color>
+<color name="highlight_color">#FFF9C4</color>
+<color name="text_color">#212121</color>
+<color name="secondary_text">#757575</color>
+</resources>
