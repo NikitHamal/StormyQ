@@ -1,5 +1,6 @@
 package com.stormy.ai;
 
+import com.stormy.ai.models.AnswerCandidate;
 import com.stormy.ai.models.AnswerResult;
 import com.stormy.ai.models.ConceptRelation;
 import com.stormy.ai.models.DynamicMemoryBuffer;
@@ -152,13 +153,18 @@ public class QnAProcessor {
         // 4. Evaluate Probabilistic Rules based on activated network
         ruleEngine.evaluateRules(semanticNetwork);
 
-        // 5. Extract Answer - Pass original question words for better phrase matching
-        AnswerResult rawAnswer = answerExtractor.extractAnswer(context, questionKeywords, questionSentiment, semanticNetwork, originalQuestionWords);
+        // 5. Extract and Rank Answers
+        List<AnswerCandidate> rankedCandidates = answerExtractor.extractRankedAnswers(context, question, semanticNetwork);
 
-        // Clamp the confidence to ensure it's within [0.0, 1.0] before further use
-        double clampedConfidence = Math.max(0.0, Math.min(1.0, rawAnswer.getConfidence()));
-        AnswerResult currentAnswer = new AnswerResult(rawAnswer.getAnswer(), rawAnswer.getHighlightedText(),
-                                                      rawAnswer.getStartIndex(), rawAnswer.getEndIndex(), clampedConfidence);
+        AnswerResult currentAnswer;
+        if (rankedCandidates.isEmpty()) {
+            currentAnswer = new AnswerResult("", context, -1, -1, 0.0);
+        } else {
+            AnswerCandidate bestCandidate = rankedCandidates.get(0);
+            currentAnswer = new AnswerResult(bestCandidate.getText(), bestCandidate.getSourceSentence(),
+                                             bestCandidate.getStartIndex(), bestCandidate.getEndIndex(),
+                                             bestCandidate.getFinalScore());
+        }
 
 
         // --- Meta-Cognition: Self-monitoring and Adaptive Processing ---

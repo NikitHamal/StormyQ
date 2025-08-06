@@ -1,10 +1,13 @@
 package com.stormy.ai;
 
+import com.stormy.ai.models.AnswerCandidate;
 import com.stormy.ai.models.AnswerResult;
 import com.stormy.ai.models.SemanticNode;
 import com.stormy.ai.models.TemporalInfo;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,6 +24,7 @@ public class AnswerExtractor {
 
     // Sentiment boost factor from QnAProcessor/SpreadingActivator
     private double sentimentBoostFactor;
+    private AdvancedScorer advancedScorer;
 
     /**
      * Constructs an AnswerExtractor.
@@ -32,6 +36,43 @@ public class AnswerExtractor {
         this.reasoningSummary = reasoningSummary;
         this.activationThreshold = initialActivationThreshold;
         this.sentimentBoostFactor = sentimentBoostFactor;
+        this.advancedScorer = new AdvancedScorer();
+    }
+
+    /**
+     * Extracts a list of ranked answer candidates based on the new multi-dimensional scoring.
+     * @param context The full original text context.
+     * @param question The original question.
+     * @param semanticNetwork The SemanticNetwork containing activated nodes.
+     * @return A list of ranked AnswerCandidate objects.
+     */
+    public List<AnswerCandidate> extractRankedAnswers(String context, String question, SemanticNetwork semanticNetwork) {
+        List<AnswerCandidate> candidates = new ArrayList<>();
+        List<String> sentences = Arrays.asList(TextUtils.splitSentences(context));
+
+        for (String sentence : sentences) {
+            String trimmedSentence = sentence.trim();
+            if (trimmedSentence.isEmpty()) continue;
+
+            // Simple approach: treat the whole sentence as a candidate
+            int startIndex = context.indexOf(trimmedSentence);
+            if (startIndex != -1) {
+                candidates.add(new AnswerCandidate(trimmedSentence, trimmedSentence, startIndex, startIndex + trimmedSentence.length()));
+            }
+
+            // More advanced: generate candidates from phrases within the sentence
+            // For now, we'll stick to sentence-level candidates for simplicity
+        }
+
+        // Score each candidate
+        for (AnswerCandidate candidate : candidates) {
+            advancedScorer.scoreCandidate(candidate, question, semanticNetwork);
+        }
+
+        // Rank candidates by final score
+        candidates.sort(Comparator.comparingDouble(AnswerCandidate::getFinalScore).reversed());
+
+        return candidates;
     }
 
     /**
@@ -63,7 +104,7 @@ public class AnswerExtractor {
             }
             // Check for explicit temporal query words in the original question words
             // Make sure these keywords are stemmed if you are comparing against stemmed `qk`
-            if (originalQuestionWords.contains("when") || originalQuestionWords.contains("year") || 
+            if (originalQuestionWords.contains("when") || originalQuestionWords.contains("year") ||
                 originalQuestionWords.contains("date") || originalQuestionWords.contains("time")) {
                 questionAsksForTime = true;
             }
@@ -213,12 +254,12 @@ public class AnswerExtractor {
 
                     // Calculate phrase score: activation sum * density / (1 + log(length)) * sentiment_factor
                     // Density: how many words in the phrase are activated
-                    double phraseDensity = (currentPhraseTokens.isEmpty() || activatedWordCountInPhrase == 0) ? 0.0 : 
+                    double phraseDensity = (currentPhraseTokens.isEmpty() || activatedWordCountInPhrase == 0) ? 0.0 :
                                            (double) activatedWordCountInPhrase / currentPhraseTokens.size();
-                    
+
                     // Logarithmic length penalty
                     double lengthPenaltyFactor = (currentPhraseTokens.size() > 1) ? Math.log(currentPhraseTokens.size()) : 0.0;
-                    
+
                     double currentPhraseScore = 0.0;
                     if (phraseDensity > 0) { // Only calculate score if there's at least one activated word
                         currentPhraseScore = currentPhraseActivationSum * phraseDensity * sentimentMatchFactor / (1.0 + lengthPenaltyFactor);
@@ -276,7 +317,7 @@ public class AnswerExtractor {
                     boolean containsRelevantActivatedWord = currentPhraseTokens.stream()
                         .anyMatch(token -> {
                             String stemmed = TextUtils.stem(token);
-                            return questionKeywords.contains(stemmed) || 
+                            return questionKeywords.contains(stemmed) ||
                                    (semanticNetwork.getNode(stemmed) != null && semanticNetwork.getNode(stemmed).getActivation() >= activationThreshold);
                         });
 
@@ -307,11 +348,11 @@ public class AnswerExtractor {
                 reasoningSummary.append(" - Phrase Score: ").append(String.format("%.2f", maxPhraseScore)).append("\n");
                 reasoningSummary.append(" - Original Context Start Index: ").append(finalStartIndex).append("\n");
                 reasoningSummary.append(" - Original Context End Index: ").append(finalEndIndex).append("\n");
-                
+
                 // Adjust confidence based on the precision of the extracted answer vs full sentence
                 // Combine maxPhraseScore and maxSentenceActivation for final confidence
                 // Give more weight to the final maxPhraseScore for a more precise highlight
-                maxSentenceActivation = (maxPhraseScore * 0.8 + maxSentenceActivation * 0.2); 
+                maxSentenceActivation = (maxPhraseScore * 0.8 + maxSentenceActivation * 0.2);
                 // Ensure confidence doesn't exceed 1.0 or go below 0.0
                 maxSentenceActivation = Math.max(0.0, Math.min(1.0, maxSentenceActivation));
 
