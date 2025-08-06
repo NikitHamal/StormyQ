@@ -1,5 +1,8 @@
 package com.stormy.ai.models;
 
+/**
+ * Represents a potential answer candidate with its associated scores.
+ */
 public class AnswerCandidate {
 
     private String text;
@@ -15,6 +18,13 @@ public class AnswerCandidate {
     private double temporalScore;
     private double finalScore;
 
+    /**
+     * Constructs a new AnswerCandidate.
+     * @param text The text of the answer candidate.
+     * @param sourceSentence The sentence from which the candidate was extracted.
+     * @param startIndex The start index of the candidate in the original context.
+     * @param endIndex The end index of the candidate in the original context.
+     */
     public AnswerCandidate(String text, String sourceSentence, int startIndex, int endIndex) {
         this.text = text;
         this.sourceSentence = sourceSentence;
@@ -90,6 +100,15 @@ public class AnswerCandidate {
         return finalScore;
     }
 
+    /**
+     * Calculates the final score of the answer candidate based on the weighted sum of its individual scores.
+     * @param semanticWeight The weight for the semantic score.
+     * @param completenessWeight The weight for the completeness score.
+     * @param relevanceWeight The weight for the relevance score.
+     * @param lengthWeight The weight for the length score.
+     * @param negationWeight The weight for the negation score.
+     * @param temporalWeight The weight for the temporal score.
+     */
     public void calculateFinalScore(double semanticWeight, double completenessWeight, double relevanceWeight, double lengthWeight, double negationWeight, double temporalWeight) {
         this.finalScore = (semanticScore * semanticWeight) +
                           (completenessScore * completenessWeight) +

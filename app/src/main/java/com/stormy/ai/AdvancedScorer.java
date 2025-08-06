@@ -6,8 +6,17 @@ import com.stormy.ai.models.TemporalInfo;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Calculates the multi-dimensional scores for an AnswerCandidate.
+ */
 public class AdvancedScorer {
 
+    /**
+     * Scores an answer candidate based on various dimensions.
+     * @param candidate The answer candidate to score.
+     * @param question The question being answered.
+     * @param semanticNetwork The semantic network representing the context.
+     */
     public void scoreCandidate(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
         candidate.setSemanticScore(calculateSemanticProximity(candidate, question, semanticNetwork));
         candidate.setCompletenessScore(calculateCompleteness(candidate, question, semanticNetwork));
@@ -17,16 +26,23 @@ public class AdvancedScorer {
         candidate.setTemporalScore(calculateTemporalScore(candidate, question));
 
         // Define weights for each score component
-        double semanticWeight = 0.3;
-        double completenessWeight = 0.2;
-        double relevanceWeight = 0.2;
-        double lengthWeight = 0.1;
+        double semanticWeight = 0.35;
+        double completenessWeight = 0.25;
+        double relevanceWeight = 0.15;
+        double lengthWeight = 0.05;
         double negationWeight = 0.1;
         double temporalWeight = 0.1;
 
         candidate.calculateFinalScore(semanticWeight, completenessWeight, relevanceWeight, lengthWeight, negationWeight, temporalWeight);
     }
 
+    /**
+     * Calculates the semantic proximity of the candidate to the question.
+     * @param candidate The answer candidate.
+     * @param question The question.
+     * @param semanticNetwork The semantic network.
+     * @return The semantic proximity score.
+     */
     private double calculateSemanticProximity(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
         List<String> questionKeywords = TextUtils.tokenize(question).stream()
                 .map(TextUtils::stem)
@@ -57,6 +73,13 @@ public class AdvancedScorer {
         return totalQuestionActivation > 0 ? totalActivationOfMatches / totalQuestionActivation : 0.0;
     }
 
+    /**
+     * Calculates the completeness of the answer.
+     * @param candidate The answer candidate.
+     * @param question The question.
+     * @param semanticNetwork The semantic network.
+     * @return The completeness score.
+     */
     private double calculateCompleteness(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
         List<String> questionKeywords = TextUtils.tokenize(question).stream()
                 .map(TextUtils::stem)
@@ -82,6 +105,12 @@ public class AdvancedScorer {
         return completeness;
     }
 
+    /**
+     * Calculates the contextual relevance of the answer.
+     * @param candidate The answer candidate.
+     * @param semanticNetwork The semantic network.
+     * @return The contextual relevance score.
+     */
     private double calculateContextualRelevance(AnswerCandidate candidate, SemanticNetwork semanticNetwork) {
         List<String> candidateTokens = TextUtils.tokenize(candidate.getText());
         if (candidateTokens.isEmpty()) {
@@ -100,6 +129,12 @@ public class AdvancedScorer {
         return activatedTokenCount > 0 ? totalActivation / activatedTokenCount : 0;
     }
 
+    /**
+     * Calculates the appropriateness of the answer's length.
+     * @param candidate The answer candidate.
+     * @param question The question.
+     * @return The length appropriateness score.
+     */
     private double calculateLengthAppropriateness(AnswerCandidate candidate, String question) {
         int length = candidate.getText().length();
         int idealLength;
@@ -119,6 +154,12 @@ public class AdvancedScorer {
         return score;
     }
 
+    /**
+     * Calculates the negation score of the answer.
+     * @param candidate The answer candidate.
+     * @param question The question.
+     * @return The negation score.
+     */
     private double calculateNegationScore(AnswerCandidate candidate, String question) {
         boolean questionHasNegation = TextUtils.tokenize(question).stream().anyMatch(TextUtils::isNegationWord);
         boolean candidateHasNegation = TextUtils.tokenize(candidate.getText()).stream().anyMatch(TextUtils::isNegationWord);
@@ -126,6 +167,12 @@ public class AdvancedScorer {
         return questionHasNegation == candidateHasNegation ? 1.0 : 0.1;
     }
 
+    /**
+     * Calculates the temporal score of the answer.
+     * @param candidate The answer candidate.
+     * @param question The question.
+     * @return The temporal score.
+     */
     private double calculateTemporalScore(AnswerCandidate candidate, String question) {
         TemporalInfo questionTemporalInfo = TextUtils.extractTemporalInfo(question);
         TemporalInfo candidateTemporalInfo = TextUtils.extractTemporalInfo(candidate.getText());
