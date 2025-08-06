@@ -27,10 +27,6 @@
 			android:hardwareAccelerated="true"
 			android:supportsPictureInPicture="true"
 			android:screenOrientation="portrait" />
-		<activity
-			android:name=".DebugActivity"
-			android:screenOrientation="portrait"
-			android:theme="@style/AppTheme.DebugActivity" />
 		<provider
 			android:name="androidx.startup.InitializationProvider"
 			android:authorities="com.stormy.ai.androidx-startup"
