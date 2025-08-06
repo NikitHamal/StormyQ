@@ -48,6 +48,7 @@ public class QnAProcessor {
     private final ConceptualKnowledgeBase conceptualKnowledgeBase;
     private final AnswerExtractor answerExtractor;
     private final QualityAssurance qualityAssurance;
+    private final NLPPipeline nlpPipeline;
 
     private final DynamicMemoryBuffer memoryBuffer;
     private final StringBuilder reasoningSummary;
@@ -76,6 +77,7 @@ public class QnAProcessor {
         this.conceptualKnowledgeBase = new ConceptualKnowledgeBase(this.reasoningSummary);
         this.answerExtractor = new AnswerExtractor(this.reasoningSummary, this.activationThreshold, SENTIMENT_BOOST_FACTOR);
         this.qualityAssurance = new QualityAssurance();
+        this.nlpPipeline = new NLPPipeline(null); // Will be initialized with context later
 
         this.memoryBuffer = new DynamicMemoryBuffer();
         this.recentConfidences = new LinkedList<>();
@@ -90,6 +92,35 @@ public class QnAProcessor {
             instance = new QnAProcessor();
         }
         return instance;
+    }
+
+    /**
+     * Initialize the NLP pipeline with Android context.
+     * Should be called from MainActivity onCreate.
+     * @param context Android context for loading NLP models
+     */
+    public void initializeNLPPipeline(android.content.Context context) {
+        if (nlpPipeline != null) {
+            try {
+                // Update context and initialize
+                java.lang.reflect.Field contextField = nlpPipeline.getClass().getDeclaredField("context");
+                contextField.setAccessible(true);
+                contextField.set(nlpPipeline, context);
+                
+                nlpPipeline.initialize();
+                reasoningSummary.append("NLP Pipeline initialized successfully.\n");
+            } catch (Exception e) {
+                reasoningSummary.append("Failed to initialize NLP Pipeline: ").append(e.getMessage()).append("\n");
+            }
+        }
+    }
+
+    /**
+     * Get the NLP pipeline instance for advanced text processing.
+     * @return The NLP pipeline instance
+     */
+    public NLPPipeline getNLPPipeline() {
+        return nlpPipeline;
     }
 
     /**
@@ -134,11 +165,19 @@ public class QnAProcessor {
 
     /**
      * Builds or reuses the semantic network from the context.
+     * Enhanced with NLP pipeline for better text analysis.
      * @param context The context to build the network from.
      */
     private void buildOrReuseNetwork(String context) {
         if (!isNetworkBuilt || !context.equals(lastProcessedContext)) {
             reasoningSummary.append("Context changed or network not built. Rebuilding semantic network...\n");
+            
+            // Enhanced context processing with NLP pipeline
+            if (nlpPipeline != null && nlpPipeline.isInitialized()) {
+                processContextWithNLP(context);
+                reasoningSummary.append("Enhanced context processing with NLP pipeline completed.\n");
+            }
+            
             semanticNetwork.buildNetwork(context);
             conceptualKnowledgeBase.integrateIntoNetwork(semanticNetwork);
             lastProcessedContext = context;
@@ -152,17 +191,116 @@ public class QnAProcessor {
     }
 
     /**
-     * Processes the question to extract keywords.
+     * Process context with NLP pipeline to extract additional semantic information.
+     * Indexes the context for search and extracts entities for enhanced semantic understanding.
+     */
+    private void processContextWithNLP(String context) {
+        try {
+            // Index the entire context for search
+            nlpPipeline.indexDocument("context", "Document Context", context);
+            
+            // Process the context to extract semantic information
+            com.stormy.ai.models.ProcessedText processed = nlpPipeline.processText(context);
+            
+            // Extract named entities and add them to the semantic network
+            java.util.Map<String, java.util.List<String>> entities = processed.getAllEntities();
+            for (java.util.Map.Entry<String, java.util.List<String>> entry : entities.entrySet()) {
+                String entityType = entry.getKey();
+                java.util.List<String> entityList = entry.getValue();
+                
+                reasoningSummary.append("Found ").append(entityList.size())
+                    .append(" ").append(entityType).append(" entities: ")
+                    .append(String.join(", ", entityList)).append("\n");
+                
+                // Add entities as high-importance nodes in semantic network
+                for (String entity : entityList) {
+                    // Entities get higher initial weights due to their semantic importance
+                    semanticNetwork.addOrUpdateNode(entity, 0.8);
+                }
+            }
+            
+            // Extract noun phrases for better concept identification
+            java.util.List<String> nounPhrases = nlpPipeline.extractNounPhrases(context);
+            reasoningSummary.append("Extracted ").append(nounPhrases.size()).append(" noun phrases.\n");
+            
+            // Add noun phrases as potential answer concepts
+            for (String nounPhrase : nounPhrases) {
+                if (nounPhrase.length() > 3 && nounPhrase.split("\\s+").length <= 4) {
+                    semanticNetwork.addOrUpdateNode(nounPhrase.toLowerCase(), 0.6);
+                }
+            }
+            
+        } catch (Exception e) {
+            reasoningSummary.append("Error in NLP processing: ").append(e.getMessage()).append("\n");
+        }
+    }
+
+    /**
+     * Processes the question to extract keywords with enhanced NLP analysis.
      * @param question The question to process.
-     * @return A list of stemmed keywords.
+     * @return A list of enhanced keywords including entities and important terms.
      */
     private List<String> processQuestion(String question) {
+        reasoningSummary.append("\n--- Enhanced Question Processing ---\n");
+        reasoningSummary.append("Original question: ").append(question).append("\n");
+
+        Set<String> enhancedKeywords = new HashSet<>();
+
+        // Traditional keyword extraction
         List<String> questionKeywords = TextUtils.tokenize(question).stream()
                 .map(TextUtils::stem)
                 .collect(Collectors.toList());
         questionKeywords.removeIf(kw -> semanticNetwork.getNode(kw) == null || TextUtils.isStopWord(kw));
-        reasoningSummary.append("Stemmed Question Keywords: ").append(questionKeywords).append("\n");
-        return questionKeywords;
+        enhancedKeywords.addAll(questionKeywords);
+
+        // Enhanced processing with NLP pipeline
+        if (nlpPipeline != null && nlpPipeline.isInitialized()) {
+            try {
+                com.stormy.ai.models.ProcessedText processed = nlpPipeline.processText(question);
+                
+                // Add named entities from question (high priority)
+                java.util.Map<String, java.util.List<String>> entities = processed.getAllEntities();
+                for (java.util.Map.Entry<String, java.util.List<String>> entry : entities.entrySet()) {
+                    String entityType = entry.getKey();
+                    java.util.List<String> entityList = entry.getValue();
+                    
+                    for (String entity : entityList) {
+                        String stemmedEntity = TextUtils.stem(entity.toLowerCase());
+                        if (semanticNetwork.getNode(stemmedEntity) != null) {
+                            enhancedKeywords.add(stemmedEntity);
+                            reasoningSummary.append("Added ").append(entityType).append(" entity: ").append(entity).append("\n");
+                        }
+                    }
+                }
+                
+                // Add lemmatized forms for better matching
+                java.util.List<String> lemmas = processed.getLemmas();
+                for (String lemma : lemmas) {
+                    if (!TextUtils.isStopWord(lemma) && lemma.length() > 2) {
+                        String stemmedLemma = TextUtils.stem(lemma.toLowerCase());
+                        if (semanticNetwork.getNode(stemmedLemma) != null) {
+                            enhancedKeywords.add(stemmedLemma);
+                        }
+                    }
+                }
+                
+                // Use Lucene search to find related terms in context
+                java.util.List<com.stormy.ai.models.SearchResult> searchResults = nlpPipeline.search(question, 3);
+                reasoningSummary.append("Lucene search found ").append(searchResults.size()).append(" relevant passages.\n");
+                
+                for (com.stormy.ai.models.SearchResult result : searchResults) {
+                    reasoningSummary.append("  - ").append(result.getSnippet(80))
+                        .append(" (relevance: ").append(String.format("%.2f", result.getRelevanceScore())).append(")\n");
+                }
+                
+            } catch (Exception e) {
+                reasoningSummary.append("Error in enhanced question processing: ").append(e.getMessage()).append("\n");
+            }
+        }
+
+        List<String> finalKeywords = new ArrayList<>(enhancedKeywords);
+        reasoningSummary.append("Enhanced keywords extracted: ").append(finalKeywords).append("\n");
+        return finalKeywords;
     }
 
     /**
