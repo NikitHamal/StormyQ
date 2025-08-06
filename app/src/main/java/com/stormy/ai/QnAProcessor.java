@@ -378,16 +378,7 @@ public class QnAProcessor {
     }
 
     public void resetProcessorState() {
-        semanticNetwork = new SpreadingActivator(
-                this.semanticNetwork,
-                this.reasoningSummary,
-                INITIAL_ACTIVATION,
-                this.activationThreshold,
-                MAX_SPREADING_ITERATIONS,
-                NEGATION_EFFECT,
-                CONCEPT_RELATION_BOOST,
-                SENTIMENT_BOOST_FACTOR
-        );
+        semanticNetwork = new SemanticNetwork(this.decayRate);
         isNetworkBuilt = false;
         lastProcessedContext = "";
         reasoningSummary.setLength(0);
