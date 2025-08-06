@@ -41,4 +41,16 @@ dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 	implementation 'androidx.appcompat:appcompat:1.7.0'
 	implementation 'com.google.android.material:material:1.12.0'
+	
+	// Apache OpenNLP for NLP processing
+	implementation 'org.apache.opennlp:opennlp-tools:2.3.0'
+	
+	// Stanford CoreNLP core components
+	implementation 'edu.stanford.nlp:stanford-corenlp:4.5.4'
+	implementation 'edu.stanford.nlp:stanford-corenlp:4.5.4:models'
+	
+	// Apache Lucene for text indexing and search
+	implementation 'org.apache.lucene:lucene-core:9.8.0'
+	implementation 'org.apache.lucene:lucene-queryparser:9.8.0'
+	implementation 'org.apache.lucene:lucene-analyzers-common:9.8.0'
 }

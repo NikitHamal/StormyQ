@@ -57,6 +57,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize processors (get the singleton instance)
         qnaProcessor = QnAProcessor.getInstance();
+        
+        // Initialize NLP Pipeline for enhanced text processing
+        qnaProcessor.initializeNLPPipeline(this);
+        
         textHighlighter = new TextHighlighter();
 
         // Set up listeners
