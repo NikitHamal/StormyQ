@@ -17,29 +17,20 @@ public class AdvancedScorer {
         candidate.setTemporalScore(calculateTemporalScore(candidate, question));
 
         // Define weights for each score component
-        double semanticWeight = 0.25;
+        double semanticWeight = 0.3;
         double completenessWeight = 0.2;
         double relevanceWeight = 0.2;
         double lengthWeight = 0.1;
-        double negationWeight = 0.15;
+        double negationWeight = 0.1;
         double temporalWeight = 0.1;
 
         candidate.calculateFinalScore(semanticWeight, completenessWeight, relevanceWeight, lengthWeight, negationWeight, temporalWeight);
-
-        System.out.println("Scored candidate: " + candidate.getText());
-        System.out.println("  Semantic Score: " + candidate.getSemanticScore());
-        System.out.println("  Completeness Score: " + candidate.getCompletenessScore());
-        System.out.println("  Relevance Score: " + candidate.getRelevanceScore());
-        System.out.println("  Length Score: " + candidate.getLengthScore());
-        System.out.println("  Negation Score: " + candidate.getNegationScore());
-        System.out.println("  Temporal Score: " + candidate.getTemporalScore());
-        System.out.println("  Final Score: " + candidate.getFinalScore());
     }
 
     private double calculateSemanticProximity(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
         List<String> questionKeywords = TextUtils.tokenize(question).stream()
                 .map(TextUtils::stem)
-                .filter(kw -> semanticNetwork.getNode(kw) != null)
+                .filter(kw -> semanticNetwork.getNode(kw) != null && semanticNetwork.getNode(kw).getActivation() > 0)
                 .collect(Collectors.toList());
 
         if (questionKeywords.isEmpty()) {
@@ -50,29 +41,45 @@ public class AdvancedScorer {
                 .map(TextUtils::stem)
                 .collect(Collectors.toList());
 
-        long matchCount = questionKeywords.stream().filter(candidateTokens::contains).count();
-        return (double) matchCount / questionKeywords.size();
+        double totalActivationOfMatches = 0;
+        double totalQuestionActivation = 0;
+
+        for (String qk : questionKeywords) {
+            SemanticNode node = semanticNetwork.getNode(qk);
+            if (node != null) {
+                totalQuestionActivation += node.getActivation();
+                if (candidateTokens.contains(qk)) {
+                    totalActivationOfMatches += node.getActivation();
+                }
+            }
+        }
+
+        return totalQuestionActivation > 0 ? totalActivationOfMatches / totalQuestionActivation : 0.0;
     }
 
     private double calculateCompleteness(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
-        if (question.toLowerCase().contains(" and ") || question.toLowerCase().startsWith("what are")) {
-            List<String> questionKeywords = TextUtils.tokenize(question).stream()
-                    .map(TextUtils::stem)
-                    .filter(kw -> semanticNetwork.getNode(kw) != null && semanticNetwork.getNode(kw).getActivation() > 0)
-                    .collect(Collectors.toList());
+        List<String> questionKeywords = TextUtils.tokenize(question).stream()
+                .map(TextUtils::stem)
+                .filter(kw -> semanticNetwork.getNode(kw) != null && semanticNetwork.getNode(kw).getActivation() > 0.1) // Higher threshold for important keywords
+                .collect(Collectors.toList());
 
-            if (questionKeywords.size() < 2) {
-                return 1.0; // Not a complex question
-            }
-
-            List<String> candidateTokens = TextUtils.tokenize(candidate.getText()).stream()
-                    .map(TextUtils::stem)
-                    .collect(Collectors.toList());
-
-            long conceptsCovered = questionKeywords.stream().filter(candidateTokens::contains).count();
-            return (double) conceptsCovered / questionKeywords.size();
+        if (questionKeywords.size() <= 1) {
+            return 1.0; // Not a complex question
         }
-        return 1.0;
+
+        List<String> candidateTokens = TextUtils.tokenize(candidate.getText()).stream()
+                .map(TextUtils::stem)
+                .collect(Collectors.toList());
+
+        long conceptsCovered = questionKeywords.stream().distinct().filter(candidateTokens::contains).count();
+        double completeness = (double) conceptsCovered / questionKeywords.stream().distinct().count();
+
+        // Boost if the question implies a list and the answer provides a list-like structure
+        if (question.toLowerCase().startsWith("what are") && (candidate.getText().contains(",") || candidate.getText().contains(" and "))) {
+            completeness = Math.min(1.0, completeness * 1.2);
+        }
+
+        return completeness;
     }
 
     private double calculateContextualRelevance(AnswerCandidate candidate, SemanticNetwork semanticNetwork) {
@@ -95,13 +102,21 @@ public class AdvancedScorer {
 
     private double calculateLengthAppropriateness(AnswerCandidate candidate, String question) {
         int length = candidate.getText().length();
-        int idealLength = 100; // Can be adjusted
-        if (question.toLowerCase().contains("what is the definition of")) {
+        int idealLength;
+
+        if (question.toLowerCase().startsWith("who is") || question.toLowerCase().startsWith("what is the name")) {
+            idealLength = 25;
+        } else if (question.toLowerCase().contains("definition")) {
             idealLength = 150;
+        } else if (question.toLowerCase().startsWith("what are")) {
+            idealLength = 120;
+        } else {
+            idealLength = 80;
         }
 
-        double diff = Math.abs(length - idealLength);
-        return Math.max(0.0, 1.0 - (diff / idealLength));
+        // Gaussian-like function for scoring length
+        double score = Math.exp(-Math.pow(length - idealLength, 2) / (2 * Math.pow(idealLength * 0.5, 2)));
+        return score;
     }
 
     private double calculateNegationScore(AnswerCandidate candidate, String question) {
@@ -116,27 +131,42 @@ public class AdvancedScorer {
         TemporalInfo candidateTemporalInfo = TextUtils.extractTemporalInfo(candidate.getText());
 
         if (questionTemporalInfo == null) {
-            return 1.0; // No temporal aspect in the question
+            return 1.0; // No temporal aspect in the question, so no penalty.
         }
         if (candidateTemporalInfo == null) {
-            return 0.5; // Question is temporal, but answer is not
+            return 0.4; // Question is temporal, but answer is not.
         }
 
+        // Exact match for points in time
         if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isPointInTime()) {
-            return questionTemporalInfo.getStartTimeMillis().equals(candidateTemporalInfo.getStartTimeMillis()) ? 1.0 : 0.2;
+            return questionTemporalInfo.getStartTimeMillis().equals(candidateTemporalInfo.getStartTimeMillis()) ? 1.0 : 0.1;
         }
-        // Basic duration overlap check
+
+        // Overlap for durations
         if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isDuration()) {
             long q_start = questionTemporalInfo.getStartTimeMillis();
             long q_end = questionTemporalInfo.getEndTimeMillis();
             long c_start = candidateTemporalInfo.getStartTimeMillis();
             long c_end = candidateTemporalInfo.getEndTimeMillis();
             if (q_start < c_end && c_start < q_end) {
-                return 1.0;
+                // Calculate overlap percentage for a more granular score
+                long overlap = Math.max(0, Math.min(q_end, c_end) - Math.max(q_start, c_start));
+                long total_duration = Math.max(q_end, c_end) - Math.min(q_start, c_start);
+                return total_duration > 0 ? (double) overlap / total_duration : 0.0;
             }
-            return 0.2;
+            return 0.1;
         }
 
-        return 0.5; // Mismatch in temporal types
+        // One is a point and the other is a duration
+        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isDuration()) {
+            return (questionTemporalInfo.getStartTimeMillis() >= candidateTemporalInfo.getStartTimeMillis() &&
+                    questionTemporalInfo.getStartTimeMillis() <= candidateTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
+        }
+        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isPointInTime()) {
+            return (candidateTemporalInfo.getStartTimeMillis() >= questionTemporalInfo.getStartTimeMillis() &&
+                    candidateTemporalInfo.getStartTimeMillis() <= questionTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
+        }
+
+        return 0.3; // Mismatch in temporal types or other cases
     }
 }
