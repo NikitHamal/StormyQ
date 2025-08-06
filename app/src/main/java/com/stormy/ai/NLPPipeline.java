@@ -3,17 +3,8 @@ package com.stormy.ai;
 import android.content.Context;
 import android.util.Log;
 
-import edu.stanford.nlp.coref.CorefCoreAnnotations;
-import edu.stanford.nlp.coref.data.CorefChain;
-import edu.stanford.nlp.ling.CoreAnnotations;
-import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.pipeline.CoreDocument;
-import edu.stanford.nlp.pipeline.StanfordCoreNLP;
-import edu.stanford.nlp.semgraph.SemanticGraph;
-import edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations;
-import edu.stanford.nlp.trees.Tree;
-import edu.stanford.nlp.trees.TreeCoreAnnotations;
-import edu.stanford.nlp.util.CoreMap;
+// Stanford CoreNLP imports removed for lightweight implementation
+// Focusing on OpenNLP + Lucene for maximum compatibility
 
 import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.TokenNameFinderModel;
@@ -38,7 +29,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
-import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.store.Directory;
 
 import java.io.IOException;
@@ -66,8 +57,7 @@ public class NLPPipeline {
     private NameFinderME organizationNameFinder;
     private NameFinderME dateNameFinder;
     
-    // Stanford CoreNLP pipeline
-    private StanfordCoreNLP coreNLPPipeline;
+    // Stanford CoreNLP removed for lightweight implementation
     
     // Lucene components
     private Directory luceneDirectory;
@@ -86,7 +76,7 @@ public class NLPPipeline {
     public NLPPipeline(Context context) {
         this.context = context;
         this.analyzer = new StandardAnalyzer();
-        this.luceneDirectory = new ByteBuffersDirectory();
+        this.luceneDirectory = new RAMDirectory();
     }
 
     /**
@@ -95,10 +85,9 @@ public class NLPPipeline {
     public boolean initialize() {
         try {
             initializeOpenNLP();
-            initializeStanfordCoreNLP();
             initializeLucene();
             isInitialized = true;
-            Log.i(TAG, "NLP Pipeline initialized successfully");
+            Log.i(TAG, "Lightweight NLP Pipeline (OpenNLP + Lucene) initialized successfully");
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize NLP Pipeline", e);
@@ -119,13 +108,7 @@ public class NLPPipeline {
         dateNameFinder = new NameFinderME(loadNERModel("date"));
     }
 
-    private void initializeStanfordCoreNLP() {
-        Properties props = new Properties();
-        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,ner,parse,depparse,coref");
-        props.setProperty("coref.algorithm", "neural");
-        props.setProperty("tokenize.language", "en");
-        coreNLPPipeline = new StanfordCoreNLP(props);
-    }
+    // Stanford CoreNLP initialization removed for lightweight implementation
 
     private void initializeLucene() throws IOException {
         IndexWriterConfig config = new IndexWriterConfig(analyzer);
@@ -151,11 +134,11 @@ public class NLPPipeline {
         ProcessedText result = new ProcessedText(text);
         
         try {
-            // OpenNLP processing
+            // OpenNLP processing (comprehensive analysis)
             processWithOpenNLP(text, result);
             
-            // Stanford CoreNLP processing
-            processWithStanfordCoreNLP(text, result);
+            // Basic lemmatization using OpenNLP stemming
+            processBasicLemmatization(text, result);
             
             // Cache the result
             textCache.put(cacheKey, result);
@@ -187,32 +170,26 @@ public class NLPPipeline {
         }
     }
 
-    private void processWithStanfordCoreNLP(String text, ProcessedText result) {
-        CoreDocument document = new CoreDocument(text);
-        coreNLPPipeline.annotate(document);
-
-        // Extract lemmas
+    /**
+     * Basic lemmatization using TextUtils stemming as a lightweight alternative to Stanford CoreNLP.
+     */
+    private void processBasicLemmatization(String text, ProcessedText result) {
         List<String> lemmas = new ArrayList<>();
-        for (CoreLabel token : document.tokens()) {
-            lemmas.add(token.lemma());
+        
+        // Use existing TextUtils stemming for basic lemmatization
+        String[] sentences = result.getSentences();
+        if (sentences != null) {
+            for (String sentence : sentences) {
+                String[] tokens = tokenizer.tokenize(sentence);
+                for (String token : tokens) {
+                    // Use TextUtils stemming as lemmatization
+                    String lemma = TextUtils.stem(token.toLowerCase());
+                    lemmas.add(lemma);
+                }
+            }
         }
+        
         result.setLemmas(lemmas);
-
-        // Extract dependency relations
-        for (CoreMap sentence : document.annotation().get(CoreAnnotations.SentencesAnnotation.class)) {
-            SemanticGraph dependencies = sentence.get(SemanticGraphCoreAnnotations.CollapsedCCProcessedDependenciesAnnotation.class);
-            result.addDependencyGraph(dependencies);
-            
-            // Extract parse tree
-            Tree tree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class);
-            result.addParseTree(tree);
-        }
-
-        // Coreference resolution
-        Map<Integer, CorefChain> corefChains = document.annotation().get(CorefCoreAnnotations.CorefChainAnnotation.class);
-        if (corefChains != null) {
-            result.setCoreferenceChains(corefChains);
-        }
     }
 
     private Map<String, List<String>> extractNamedEntities(String[] tokens) {
@@ -406,7 +383,7 @@ public class NLPPipeline {
     }
 
     /**
-     * Extract noun phrases using parse trees
+     * Extract noun phrases using POS tagging patterns (lightweight alternative to parse trees)
      */
     public List<String> extractNounPhrases(String text) {
         if (!isInitialized) {
@@ -416,21 +393,49 @@ public class NLPPipeline {
         ProcessedText processed = processText(text);
         List<String> nounPhrases = new ArrayList<>();
         
-        for (Tree parseTree : processed.getParseTrees()) {
-            extractNounPhrasesFromTree(parseTree, nounPhrases);
+        // Extract noun phrases using POS pattern matching
+        for (ProcessedText.SentenceAnalysis sentence : processed.getSentenceAnalyses()) {
+            String[] tokens = sentence.getTokens();
+            String[] posTags = sentence.getPosTags();
+            
+            // Find noun phrase patterns: (DT)? (JJ)* (NN)+
+            StringBuilder currentNP = new StringBuilder();
+            boolean inNounPhrase = false;
+            
+            for (int i = 0; i < tokens.length && i < posTags.length; i++) {
+                String pos = posTags[i];
+                String token = tokens[i];
+                
+                if (pos.startsWith("NN") || pos.startsWith("JJ") || pos.equals("DT")) {
+                    // Part of potential noun phrase
+                    if (currentNP.length() > 0) {
+                        currentNP.append(" ");
+                    }
+                    currentNP.append(token);
+                    inNounPhrase = true;
+                } else {
+                    // End of noun phrase
+                    if (inNounPhrase && currentNP.length() > 0) {
+                        String np = currentNP.toString().trim();
+                        if (np.split("\\s+").length <= 4 && np.length() > 2) { // Reasonable length
+                            nounPhrases.add(np);
+                        }
+                    }
+                    currentNP.setLength(0);
+                    inNounPhrase = false;
+                }
+            }
+            
+            // Handle noun phrase at end of sentence
+            if (inNounPhrase && currentNP.length() > 0) {
+                String np = currentNP.toString().trim();
+                if (np.split("\\s+").length <= 4 && np.length() > 2) {
+                    nounPhrases.add(np);
+                }
+            }
         }
         
         return nounPhrases;
-    }
-
-    private void extractNounPhrasesFromTree(Tree tree, List<String> nounPhrases) {
-        if (tree.label().value().equals("NP")) {
-            nounPhrases.add(tree.pennString().replaceAll("[()\\n]", " ").trim());
-        }
-        
-        for (Tree child : tree.children()) {
-            extractNounPhrasesFromTree(child, nounPhrases);
-        }
     }
 
     /**

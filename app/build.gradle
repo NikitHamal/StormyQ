@@ -14,6 +14,30 @@ android {
 		targetSdkVersion 34
 		versionCode 1
 		versionName "1.0"
+		
+		// Enable multidex for large dependencies
+		multiDexEnabled true
+	}
+	
+	// Configure Java 8 compatibility for NLP libraries
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_1_8
+		targetCompatibility JavaVersion.VERSION_1_8
+	}
+	
+	// Packaging options to handle duplicate files from NLP libraries
+	packagingOptions {
+		pickFirst '**/META-INF/DEPENDENCIES'
+		pickFirst '**/META-INF/LICENSE'
+		pickFirst '**/META-INF/LICENSE.txt'
+		pickFirst '**/META-INF/NOTICE'
+		pickFirst '**/META-INF/NOTICE.txt'
+		exclude 'META-INF/INDEX.LIST'
+		exclude 'META-INF/DEPENDENCIES'
+		exclude 'META-INF/LICENSE'
+		exclude 'META-INF/LICENSE.txt'
+		exclude 'META-INF/NOTICE'
+		exclude 'META-INF/NOTICE.txt'
 	}
 	
 	signingConfigs {
@@ -42,15 +66,14 @@ dependencies {
 	implementation 'androidx.appcompat:appcompat:1.7.0'
 	implementation 'com.google.android.material:material:1.12.0'
 	
-	// Apache OpenNLP for NLP processing
-	implementation 'org.apache.opennlp:opennlp-tools:2.3.0'
+	// MultiDex support for large dependencies
+	implementation 'androidx.multidex:multidex:2.0.1'
 	
-	// Stanford CoreNLP core components
-	implementation 'edu.stanford.nlp:stanford-corenlp:4.5.4'
-	implementation 'edu.stanford.nlp:stanford-corenlp:4.5.4:models'
+	// Apache OpenNLP for NLP processing (lightweight, stable)
+	implementation 'org.apache.opennlp:opennlp-tools:1.9.4'
 	
-	// Apache Lucene for text indexing and search
-	implementation 'org.apache.lucene:lucene-core:9.8.0'
-	implementation 'org.apache.lucene:lucene-queryparser:9.8.0'
-	implementation 'org.apache.lucene:lucene-analyzers-common:9.8.0'
+	// Apache Lucene for text indexing and search (stable version compatible with OpenNLP)
+	implementation 'org.apache.lucene:lucene-core:7.7.3'
+	implementation 'org.apache.lucene:lucene-queryparser:7.7.3'
+	implementation 'org.apache.lucene:lucene-analyzers-common:7.7.3'
 }

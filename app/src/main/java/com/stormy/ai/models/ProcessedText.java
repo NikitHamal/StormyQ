@@ -1,8 +1,6 @@
 package com.stormy.ai.models;
 
-import edu.stanford.nlp.coref.data.CorefChain;
-import edu.stanford.nlp.semgraph.SemanticGraph;
-import edu.stanford.nlp.trees.Tree;
+// Stanford CoreNLP dependencies removed for lightweight implementation
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,11 +18,8 @@ public class ProcessedText {
     private String[] sentences;
     private List<SentenceAnalysis> sentenceAnalyses;
     
-    // Stanford CoreNLP results
+    // Basic NLP results (lightweight implementation)
     private List<String> lemmas;
-    private List<SemanticGraph> dependencyGraphs;
-    private List<Tree> parseTrees;
-    private Map<Integer, CorefChain> coreferenceChains;
     
     // Combined results
     private Map<String, List<String>> allEntities;
@@ -35,8 +30,6 @@ public class ProcessedText {
         this.originalText = originalText;
         this.sentenceAnalyses = new ArrayList<>();
         this.lemmas = new ArrayList<>();
-        this.dependencyGraphs = new ArrayList<>();
-        this.parseTrees = new ArrayList<>();
         this.allEntities = new HashMap<>();
         this.allPOSTags = new ArrayList<>();
         this.allTokens = new ArrayList<>();
@@ -80,29 +73,7 @@ public class ProcessedText {
         return lemmas;
     }
 
-    public void addDependencyGraph(SemanticGraph graph) {
-        dependencyGraphs.add(graph);
-    }
-
-    public List<SemanticGraph> getDependencyGraphs() {
-        return dependencyGraphs;
-    }
-
-    public void addParseTree(Tree tree) {
-        parseTrees.add(tree);
-    }
-
-    public List<Tree> getParseTrees() {
-        return parseTrees;
-    }
-
-    public void setCoreferenceChains(Map<Integer, CorefChain> chains) {
-        this.coreferenceChains = chains;
-    }
-
-    public Map<Integer, CorefChain> getCoreferenceChains() {
-        return coreferenceChains;
-    }
+    // Stanford CoreNLP methods removed for lightweight implementation
 
     // Combined accessors
     public Map<String, List<String>> getAllEntities() {
@@ -136,19 +107,7 @@ public class ProcessedText {
         return entities != null && !entities.isEmpty();
     }
 
-    /**
-     * Get the first dependency graph (for simple cases)
-     */
-    public SemanticGraph getPrimaryDependencyGraph() {
-        return dependencyGraphs.isEmpty() ? null : dependencyGraphs.get(0);
-    }
-
-    /**
-     * Get the first parse tree (for simple cases)
-     */
-    public Tree getPrimaryParseTree() {
-        return parseTrees.isEmpty() ? null : parseTrees.get(0);
-    }
+    // Primary dependency and parse tree methods removed for lightweight implementation
 
     /**
      * Inner class to hold sentence-level analysis
@@ -225,8 +184,7 @@ public class ProcessedText {
         sb.append("  sentences=").append(sentences != null ? sentences.length : 0).append("\n");
         sb.append("  lemmas=").append(lemmas.size()).append("\n");
         sb.append("  entities=").append(allEntities.size()).append(" types\n");
-        sb.append("  dependencyGraphs=").append(dependencyGraphs.size()).append("\n");
-        sb.append("  parseTrees=").append(parseTrees.size()).append("\n");
+        sb.append("  implementation=lightweight (OpenNLP + Lucene)\n");
         sb.append("}");
         return sb.toString();
     }
