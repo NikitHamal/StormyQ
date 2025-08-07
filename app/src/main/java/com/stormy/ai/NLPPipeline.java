@@ -6,6 +6,9 @@ import android.util.Log;
 // Stanford CoreNLP imports removed for lightweight implementation
 // Focusing on OpenNLP + Lucene for maximum compatibility
 
+import com.stormy.ai.models.ProcessedText;
+import com.stormy.ai.models.SearchResult;
+
 import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.TokenNameFinderModel;
 import opennlp.tools.postag.POSModel;

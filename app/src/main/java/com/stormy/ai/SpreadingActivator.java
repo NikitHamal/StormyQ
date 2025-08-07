@@ -70,13 +70,12 @@ public class SpreadingActivator {
         Queue<SemanticNode> activationQueue = new LinkedList<>();
 
         // Extract temporal information from initial activators (assuming question context for now)
-        TemporalInfo queryTemporalInfo = null;
+        List<TemporalInfo> queryTemporalIntervals = new ArrayList<>();
         for (String activator : initialActivators) {
-            TemporalInfo temp = TextUtils.extractTemporalInfo(activator);
-            if (temp != null) {
-                queryTemporalInfo = temp;
-                reasoningSummary.append("Query Temporal Info Detected (from initial activators): ").append(temp.getRawTemporalExpression()).append("\n");
-                break;
+            List<TextUtils.TemporalInfoResult> tempResults = TextUtils.extractAllTemporalInfo(activator);
+            for (TextUtils.TemporalInfoResult t : tempResults) {
+                queryTemporalIntervals.add(t.getTemporalInfo());
+                reasoningSummary.append("Query Temporal Info Detected (from initial activators): ").append(t.getTemporalInfo().getRawTemporalExpression()).append("\n");
             }
         }
 
@@ -142,10 +141,19 @@ public class SpreadingActivator {
                         }
 
                         // Temporal relevance boost for target node
-                        if (queryTemporalInfo != null && targetNode.getTemporalInfo() != null) {
-                            if (doTimeRangesOverlap(queryTemporalInfo, targetNode.getTemporalInfo())) {
-                                activationToSpread *= (1.0 + conceptRelationBoost * 0.5); // Use a portion of conceptual boost
-                                reasoningSummary.append("      -> Temporal Match/Overlap Boost for '").append(targetNode.getName()).append("'\n");
+                        if (!queryTemporalIntervals.isEmpty() && targetNode.getTemporalInfos() != null && !targetNode.getTemporalInfos().isEmpty()) {
+                            boolean anyMatch = false;
+                            for (TemporalInfo q : queryTemporalIntervals) {
+                                for (TemporalInfo t : targetNode.getTemporalInfos()) {
+                                    String rel = TemporalReasoner.getTemporalRelation(t, q);
+                                    if (rel.equals("during") || rel.equals("equal") || rel.equals("contains") || rel.equals("overlaps")) {
+                                        activationToSpread *= (1.0 + conceptRelationBoost * 0.5); // Use a portion of conceptual boost
+                                        reasoningSummary.append("      -> Temporal Match/Overlap Boost for '").append(targetNode.getName()).append("' (relation: ").append(rel).append(")\n");
+                                        anyMatch = true;
+                                        break;
+                                    }
+                                }
+                                if (anyMatch) break;
                             }
                         }
 
@@ -194,10 +202,19 @@ public class SpreadingActivator {
                         }
 
                         // Temporal relevance boost for related node
-                        if (queryTemporalInfo != null && relatedNode.getTemporalInfo() != null) {
-                            if (doTimeRangesOverlap(queryTemporalInfo, relatedNode.getTemporalInfo())) {
-                                activationFromRelation *= (1.0 + conceptRelationBoost * 0.5);
-                                reasoningSummary.append("      -> Temporal Match/Overlap Boost for '").append(relatedNode.getName()).append("'\n");
+                        if (queryTemporalIntervals.isEmpty() && relatedNode.getTemporalInfos() != null && !relatedNode.getTemporalInfos().isEmpty()) {
+                            boolean anyMatch = false;
+                            for (TemporalInfo q : queryTemporalIntervals) {
+                                for (TemporalInfo t : relatedNode.getTemporalInfos()) {
+                                    String rel = TemporalReasoner.getTemporalRelation(t, q);
+                                    if (rel.equals("during") || rel.equals("equal") || rel.equals("contains") || rel.equals("overlaps")) {
+                                        activationFromRelation *= (1.0 + conceptRelationBoost * 0.5);
+                                        reasoningSummary.append("      -> Temporal Match/Overlap Boost for '").append(relatedNode.getName()).append("' (relation: ").append(rel).append(")\n");
+                                        anyMatch = true;
+                                        break;
+                                    }
+                                }
+                                if (anyMatch) break;
                             }
                         }
 

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 
 /**
  * Responsible for extracting and ranking potential answer candidates from the context.
@@ -69,6 +70,78 @@ public class AnswerExtractor {
         candidates.sort(Comparator.comparingDouble(AnswerCandidate::getFinalScore).reversed());
 
         return candidates;
+    }
+
+    /**
+     * Synthesizes answers from top candidates to cover all question aspects.
+     * Uses LevenshteinDistance to merge similar/overlapping candidates.
+     */
+    public List<AnswerCandidate> synthesizeAndFormatAnswers(List<AnswerCandidate> candidates, String question) {
+        List<AnswerCandidate> synthesized = new ArrayList<>();
+        if (candidates.isEmpty()) return synthesized;
+        LevenshteinDistance metric = new LevenshteinDistance();
+        boolean[] used = new boolean[candidates.size()];
+        for (int i = 0; i < candidates.size(); i++) {
+            if (used[i]) continue;
+            String base = candidates.get(i).getText();
+            StringBuilder merged = new StringBuilder(base);
+            used[i] = true;
+            for (int j = i + 1; j < candidates.size(); j++) {
+                if (used[j]) continue;
+                String other = candidates.get(j).getText();
+                int dist = metric.apply(base, other);
+                int maxLen = Math.max(base.length(), other.length());
+                double sim = (maxLen == 0) ? 1.0 : 1.0 - ((double) dist / maxLen);
+                if (sim > 0.7) {
+                    merged.append("; ").append(other);
+                    used[j] = true;
+                }
+            }
+            synthesized.add(new AnswerCandidate(merged.toString(), base, 0, 0));
+        }
+        for (AnswerCandidate candidate : synthesized) {
+            if (!isComplete(candidate.getText(), question)) {
+                candidate.setCompletenessScore(0.5);
+            } else {
+                candidate.setCompletenessScore(1.0);
+            }
+        }
+        for (AnswerCandidate candidate : synthesized) {
+            candidate = formatAnswer(candidate, question);
+        }
+        return synthesized;
+    }
+
+    /**
+     * Checks if the answer covers all aspects of the question (who, what, when, where, why, how).
+     */
+    private boolean isComplete(String answer, String question) {
+        String q = question.toLowerCase();
+        if (q.contains("who") && !answer.matches(".*\\b[A-Z][a-z]+\\b.*")) return false;
+        if (q.contains("when") && !answer.matches(".*\\d{4}.*|today|yesterday|tomorrow|month|year|week.*")) return false;
+        if (q.contains("where") && !answer.matches(".*\\b(in|at|on|from|to) [A-Z][a-z]+.*")) return false;
+        if (q.contains("why") && !answer.matches(".*because.*|due to.*|as a result.*")) return false;
+        if (q.contains("how") && !answer.matches(".*by.*|using.*|with.*|through.*")) return false;
+        return true;
+    }
+
+    /**
+     * Formats the answer based on question type (list, fact, explanation).
+     */
+    private AnswerCandidate formatAnswer(AnswerCandidate candidate, String question) {
+        String q = question.toLowerCase();
+        String text = candidate.getText();
+        if (q.startsWith("list") || q.contains("which of the following")) {
+            // Format as bullet list
+            String[] items = text.split("; ");
+            StringBuilder sb = new StringBuilder();
+            for (String item : items) {
+                sb.append("- ").append(item.trim()).append("\n");
+            }
+            candidate = new AnswerCandidate(sb.toString().trim(), candidate.getSourceSentence(), candidate.getStartIndex(), candidate.getEndIndex());
+        }
+        // Add more formatting rules as needed
+        return candidate;
     }
 
     /**
@@ -238,6 +311,107 @@ public class AnswerExtractor {
                "at".equals(lowerWord) || "by".equals(lowerWord) || "for".equals(lowerWord) ||
                "with".equals(lowerWord) || "to".equals(lowerWord) || "from".equals(lowerWord) ||
                "about".equals(lowerWord) || "into".equals(lowerWord) || "through".equals(lowerWord);
+    }
+
+    /**
+     * Extracts key aspects from the question (who, what, when, where, why, how, numerical).
+     */
+    private List<String> extractAspects(String question) {
+        List<String> aspects = new ArrayList<>();
+        String q = question.toLowerCase();
+        if (q.contains("who")) aspects.add("who");
+        if (q.contains("what")) aspects.add("what");
+        if (q.contains("when")) aspects.add("when");
+        if (q.contains("where")) aspects.add("where");
+        if (q.contains("why")) aspects.add("why");
+        if (q.contains("how")) aspects.add("how");
+        if (q.matches(".*\\d+.*|how many|how much|number|amount|percent|percentage|rate|date|year|age.*")) aspects.add("numerical");
+        return aspects;
+    }
+
+    /**
+     * Synthesizes a structured answer covering all aspects, with enhanced formatting and optional highlighting/confidence notes.
+     */
+    public String synthesizeStructuredAnswer(List<AnswerCandidate> candidates, String question, AdvancedScorer.ConfidenceResult confidenceResult) {
+        List<String> aspects = extractAspects(question);
+        StringBuilder answer = new StringBuilder();
+        for (String aspect : aspects) {
+            AnswerCandidate best = selectBestForAspect(candidates, aspect);
+            if (best != null) {
+                String label = aspect.substring(0, 1).toUpperCase() + aspect.substring(1) + ": ";
+                String value = highlightAspect(best.getText(), aspect);
+                answer.append(label).append(value).append("\n");
+            }
+        }
+        if (answer.length() == 0 && !candidates.isEmpty()) {
+            answer.append(candidates.get(0).getText());
+        }
+        // Add confidence/uncertainty note if needed
+        if (confidenceResult != null && confidenceResult.confidence < 0.7) {
+            answer.append("\n(Note: This answer is synthesized from uncertain or conflicting sources. Confidence: ")
+                  .append(String.format("%.2f", confidenceResult.confidence)).append(")");
+        }
+        return answer.toString().trim();
+    }
+
+    /**
+     * Selects the best candidate for a given aspect using LevenshteinDistance similarity.
+     */
+    private AnswerCandidate selectBestForAspect(List<AnswerCandidate> candidates, String aspect) {
+        LevenshteinDistance metric = new LevenshteinDistance();
+        double bestScore = 0.0;
+        AnswerCandidate best = null;
+        for (AnswerCandidate c : candidates) {
+            double score = 0.0;
+            String text = c.getText().toLowerCase();
+            switch (aspect) {
+                case "who":
+                    if (text.matches(".*\\b[A-Z][a-z]+\\b.*")) score += 1.0;
+                    break;
+                case "when":
+                    if (text.matches(".*\\d{4}.*|today|yesterday|tomorrow|month|year|week.*")) score += 1.0;
+                    break;
+                case "where":
+                    if (text.matches(".*\\b(in|at|on|from|to) [A-Z][a-z]+.*")) score += 1.0;
+                    break;
+                case "why":
+                    if (text.contains("because") || text.contains("due to") || text.contains("as a result")) score += 1.0;
+                    break;
+                case "how":
+                    if (text.contains("by ") || text.contains("using ") || text.contains("with ") || text.contains("through ")) score += 1.0;
+                    break;
+                case "numerical":
+                    if (text.matches(".*\\d+.*|percent|percentage|rate|amount|number|year|date|age.*")) score += 1.0;
+                    break;
+                default:
+                    break;
+            }
+            int dist = metric.apply(text, aspect);
+            int maxLen = Math.max(text.length(), aspect.length());
+            double sim = (maxLen == 0) ? 1.0 : 1.0 - ((double) dist / maxLen);
+            score += sim;
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Highlights or emphasizes key answer parts for an aspect (e.g., bold numbers, dates, names).
+     */
+    private String highlightAspect(String text, String aspect) {
+        switch (aspect) {
+            case "when":
+            case "numerical":
+                return text.replaceAll("(\\d{4}|\\d+|percent|percentage|rate|amount|number|year|date|age)", "**$1**");
+            case "who":
+            case "where":
+                return text.replaceAll("(\\b[A-Z][a-z]+\\b)", "**$1**");
+            default:
+                return text;
+        }
     }
 
     /**

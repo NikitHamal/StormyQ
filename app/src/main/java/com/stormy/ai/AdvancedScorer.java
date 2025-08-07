@@ -168,52 +168,98 @@ public class AdvancedScorer {
     }
 
     /**
-     * Calculates the temporal score of the answer.
+     * Calculates the temporal score of the answer using advanced temporal reasoning.
+     * Considers all detected intervals, ambiguity, and confidence.
      * @param candidate The answer candidate.
      * @param question The question.
      * @return The temporal score.
      */
     private double calculateTemporalScore(AnswerCandidate candidate, String question) {
-        TemporalInfo questionTemporalInfo = TextUtils.extractTemporalInfo(question);
-        TemporalInfo candidateTemporalInfo = TextUtils.extractTemporalInfo(candidate.getText());
-
-        if (questionTemporalInfo == null) {
+        // Use advanced extraction
+        List<TextUtils.TemporalInfoResult> questionTimes = TextUtils.extractAllTemporalInfo(question);
+        List<TextUtils.TemporalInfoResult> candidateTimes = TextUtils.extractAllTemporalInfo(candidate.getText());
+        if (questionTimes.isEmpty()) {
             return 1.0; // No temporal aspect in the question, so no penalty.
         }
-        if (candidateTemporalInfo == null) {
+        if (candidateTimes.isEmpty()) {
             return 0.4; // Question is temporal, but answer is not.
         }
-
-        // Exact match for points in time
-        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isPointInTime()) {
-            return questionTemporalInfo.getStartTimeMillis().equals(candidateTemporalInfo.getStartTimeMillis()) ? 1.0 : 0.1;
-        }
-
-        // Overlap for durations
-        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isDuration()) {
-            long q_start = questionTemporalInfo.getStartTimeMillis();
-            long q_end = questionTemporalInfo.getEndTimeMillis();
-            long c_start = candidateTemporalInfo.getStartTimeMillis();
-            long c_end = candidateTemporalInfo.getEndTimeMillis();
-            if (q_start < c_end && c_start < q_end) {
-                // Calculate overlap percentage for a more granular score
-                long overlap = Math.max(0, Math.min(q_end, c_end) - Math.max(q_start, c_start));
-                long total_duration = Math.max(q_end, c_end) - Math.min(q_start, c_start);
-                return total_duration > 0 ? (double) overlap / total_duration : 0.0;
+        double bestScore = 0.0;
+        for (TextUtils.TemporalInfoResult q : questionTimes) {
+            for (TextUtils.TemporalInfoResult a : candidateTimes) {
+                TemporalReasoner.TemporalValidationResult result = TemporalReasoner.validateTemporalAnswer(q.getTemporalInfo().getRawTemporalExpression(), a.getTemporalInfo().getRawTemporalExpression());
+                // Weight by confidence and ambiguity
+                double score = result.valid ? result.confidence : 0.2 * result.confidence;
+                if (q.isAmbiguous() || a.isAmbiguous()) score *= 0.7;
+                bestScore = Math.max(bestScore, score);
             }
-            return 0.1;
         }
+        return bestScore;
+    }
 
-        // One is a point and the other is a duration
-        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isDuration()) {
-            return (questionTemporalInfo.getStartTimeMillis() >= candidateTemporalInfo.getStartTimeMillis() &&
-                    questionTemporalInfo.getStartTimeMillis() <= candidateTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
-        }
-        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isPointInTime()) {
-            return (candidateTemporalInfo.getStartTimeMillis() >= questionTemporalInfo.getStartTimeMillis() &&
-                    candidateTemporalInfo.getStartTimeMillis() <= questionTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
-        }
+    /**
+     * Calculates the sentiment match score between question and answer.
+     * Prefers answers with matching sentiment/emotion, penalizes mismatches, flags sarcasm/irony.
+     */
+    private double calculateSentimentScore(AnswerCandidate candidate, String question) {
+        int qSentiment = TextUtils.getNuancedSentimentScore(question);
+        int aSentiment = TextUtils.getNuancedSentimentScore(candidate.getText());
+        String qEmotion = TextUtils.extractEmotionalContext(question);
+        String aEmotion = TextUtils.extractEmotionalContext(candidate.getText());
+        boolean sarcasm = TextUtils.detectSarcasmOrIrony(candidate.getText());
+        // Sentiment match
+        double score = (qSentiment == aSentiment) ? 1.0 : 0.5;
+        // Emotion match
+        if (!qEmotion.equals("neutral") && qEmotion.equals(aEmotion)) score += 0.2;
+        // Penalize strong mismatch
+        if (Math.abs(qSentiment - aSentiment) > 1) score -= 0.3;
+        // Sarcasm/irony penalty
+        if (sarcasm) score -= 0.2;
+        // Clamp
+        if (score > 1.0) score = 1.0;
+        if (score < 0.0) score = 0.0;
+        return score;
+    }
 
-        return 0.3; // Mismatch in temporal types or other cases
+    /**
+     * Result structure for advanced confidence calibration and uncertainty management.
+     */
+    public static class ConfidenceResult {
+        public final double confidence;
+        public final String explanation;
+        public final double temporal;
+        public final double sentiment;
+        public final double semantic;
+        public final double completeness;
+        public final double negation;
+        public ConfidenceResult(double confidence, String explanation, double temporal, double sentiment, double semantic, double completeness, double negation) {
+            this.confidence = confidence;
+            this.explanation = explanation;
+            this.temporal = temporal;
+            this.sentiment = sentiment;
+            this.semantic = semantic;
+            this.completeness = completeness;
+            this.negation = negation;
+        }
+    }
+
+    /**
+     * Aggregates confidence from all scoring modules and provides an explanation.
+     */
+    public ConfidenceResult calculateOverallConfidence(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
+        double temporal = calculateTemporalScore(candidate, question);
+        double sentiment = calculateSentimentScore(candidate, question);
+        double semantic = calculateSemanticProximity(candidate, question, semanticNetwork);
+        double completeness = calculateCompleteness(candidate, question, semanticNetwork);
+        double negation = calculateNegationScore(candidate, question);
+        // Weighted aggregation (weights can be tuned)
+        double confidence = 0.25 * temporal + 0.2 * sentiment + 0.25 * semantic + 0.2 * completeness + 0.1 * negation;
+        StringBuilder explanation = new StringBuilder();
+        explanation.append("Temporal: ").append(String.format("%.2f", temporal)).append(", ");
+        explanation.append("Sentiment: ").append(String.format("%.2f", sentiment)).append(", ");
+        explanation.append("Semantic: ").append(String.format("%.2f", semantic)).append(", ");
+        explanation.append("Completeness: ").append(String.format("%.2f", completeness)).append(", ");
+        explanation.append("Negation: ").append(String.format("%.2f", negation));
+        return new ConfidenceResult(confidence, explanation.toString(), temporal, sentiment, semantic, completeness, negation);
     }
 }

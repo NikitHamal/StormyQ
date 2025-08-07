@@ -366,129 +366,201 @@ public class TextUtils {
         return score;
     }
 
+    /**
+     * Returns a nuanced sentiment score: -2 (very negative), -1 (negative), 0 (neutral), 1 (positive), 2 (very positive).
+     * Considers negation, intensifiers, and context.
+     */
+    public static int getNuancedSentimentScore(String text) {
+        if (text == null || text.trim().isEmpty()) return 0;
+        String lower = text.toLowerCase();
+        int score = 0;
+        int boost = 0;
+        String[] tokens = tokenize(lower).toArray(new String[0]);
+        for (int i = 0; i < tokens.length; i++) {
+            String word = tokens[i];
+            if (POSITIVE_WORDS.contains(word)) score++;
+            if (NEGATIVE_WORDS.contains(word)) score--;
+            // Intensifiers
+            if (word.equals("very") || word.equals("extremely") || word.equals("so") || word.equals("super")) boost++;
+            // Diminishers
+            if (word.equals("slightly") || word.equals("somewhat") || word.equals("barely")) boost--;
+            // Negation
+            if (isNegationWord(word) && i + 1 < tokens.length) {
+                if (POSITIVE_WORDS.contains(tokens[i + 1])) score--;
+                if (NEGATIVE_WORDS.contains(tokens[i + 1])) score++;
+            }
+        }
+        int finalScore = score + (boost > 0 ? (score > 0 ? 1 : (score < 0 ? -1 : 0)) : 0);
+        if (finalScore > 1) return 2;
+        if (finalScore < -1) return -2;
+        return finalScore;
+    }
 
     /**
-     * Very basic temporal expression extraction.
-     * This method attempts to assign a numerical 'time' to simple temporal keywords.
-     * In a real application, this would involve a robust NLP date/time parser.
-     * For now, it just returns a `TemporalInfo` with a raw expression and dummy timestamps.
-     *
-     * @param word The temporal keyword found.
-     * @return A TemporalInfo object or null if not a recognized simple temporal keyword.
+     * Detects sarcasm or irony using lightweight heuristics.
+     * Returns true if likely sarcastic/ironic, false otherwise.
      */
-    public static TemporalInfo extractTemporalInfo(String word) {
-        long currentTime = System.currentTimeMillis(); // Use current time as a reference
-        word = word.toLowerCase();
-
-        Calendar cal = Calendar.getInstance();
-        int currentYear = cal.get(Calendar.YEAR);
-        int currentMonth = cal.get(Calendar.MONTH); // 0-indexed
-        int currentDay = cal.get(Calendar.DAY_OF_MONTH);
-
-        cal.set(currentYear, currentMonth, currentDay, 0, 0, 0);
-        long startOfDay = cal.getTimeInMillis();
-        cal.set(currentYear, currentMonth, currentDay, 23, 59, 59);
-        long endOfDay = cal.getTimeInMillis();
-
-        switch (word) {
-            case "today":
-                return new TemporalInfo("today", startOfDay, endOfDay);
-            case "yesterday":
-                return new TemporalInfo("yesterday", startOfDay - (24 * 60 * 60 * 1000L), endOfDay - (24 * 60 * 60 * 1000L));
-            case "tomorrow":
-                return new TemporalInfo("tomorrow", startOfDay + (24 * 60 * 60 * 1000L), endOfDay + (24 * 60 * 60 * 1000L));
-            case "now":
-                return new TemporalInfo("now", currentTime, currentTime);
-            case "last week":
-                return new TemporalInfo("last week", startOfDay - (7 * 24 * 60 * 60 * 1000L), endOfDay - (7 * 24 * 60 * 60 * 1000L));
-            case "next week":
-                return new TemporalInfo("next week", startOfDay + (7 * 24 * 60 * 60 * 1000L), endOfDay + (7 * 24 * 60 * 60 * 1000L));
-            case "last month":
-                cal.add(Calendar.MONTH, -1);
-                cal.set(Calendar.DAY_OF_MONTH, 1);
-                long lastMonthStart = cal.getTimeInMillis();
-                cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
-                long lastMonthEnd = cal.getTimeInMillis();
-                return new TemporalInfo("last month", lastMonthStart, lastMonthEnd);
-            case "next month":
-                cal.add(Calendar.MONTH, 1);
-                cal.set(Calendar.DAY_OF_MONTH, 1);
-                long nextMonthStart = cal.getTimeInMillis();
-                cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
-                long nextMonthEnd = cal.getTimeInMillis();
-                return new TemporalInfo("next month", nextMonthStart, nextMonthEnd);
-            case "last year":
-                cal.set(currentYear - 1, Calendar.JANUARY, 1, 0, 0, 0);
-                long lastYearStart = cal.getTimeInMillis();
-                cal.set(currentYear - 1, Calendar.DECEMBER, 31, 23, 59, 59);
-                long lastYearEnd = cal.getTimeInMillis();
-                return new TemporalInfo("last year", lastYearStart, lastYearEnd);
-            case "next year":
-                cal.set(currentYear + 1, Calendar.JANUARY, 1, 0, 0, 0);
-                long nextYearStart = cal.getTimeInMillis();
-                cal.set(currentYear + 1, Calendar.DECEMBER, 31, 23, 59, 59);
-                long nextYearEnd = cal.getTimeInMillis();
-                return new TemporalInfo("next year", nextYearStart, nextYearEnd);
-            case "two years ago":
-                cal.set(currentYear - 2, Calendar.JANUARY, 1, 0, 0, 0);
-                long twoYearsAgoStart = cal.getTimeInMillis();
-                cal.set(currentYear - 2, Calendar.DECEMBER, 31, 23, 59, 59);
-                long twoYearsAgoEnd = cal.getTimeInMillis();
-                return new TemporalInfo("two years ago", twoYearsAgoStart, twoYearsAgoEnd);
-            case "in the past": // Broad temporal marker
-            case "historically":
-                return new TemporalInfo(word, null, currentTime); // Ends now, started indefinitely in past
-            case "in the future": // Broad temporal marker
-            case "soon":
-                return new TemporalInfo(word, currentTime, null); // Starts now, ends indefinitely in future
-
-            // Add months
-            case "january": case "february": case "march": case "april": case "may": case "june":
-            case "july": case "august": case "september": case "october": case "november": case "december":
-                try {
-                    Calendar monthCal = Calendar.getInstance();
-                    monthCal.set(currentYear, getMonthIndex(word), 1, 0, 0, 0);
-                    long monthStart = monthCal.getTimeInMillis();
-                    monthCal.set(Calendar.DAY_OF_MONTH, monthCal.getActualMaximum(Calendar.DAY_OF_MONTH));
-                    long monthEnd = monthCal.getTimeInMillis();
-                    return new TemporalInfo(word, monthStart, monthEnd);
-                } catch (Exception e) { /* Fall through */ }
-
-
-            default:
-                // For year numbers (e.g., "1990")
-                if (word.matches("\\d{4}")) {
-                    try {
-                        int year = Integer.parseInt(word);
-                        Calendar yearCal = Calendar.getInstance();
-                        yearCal.set(year, Calendar.JANUARY, 1, 0, 0, 0);
-                        long yearStart = yearCal.getTimeInMillis();
-                        yearCal.set(year, Calendar.DECEMBER, 31, 23, 59, 59);
-                        long yearEnd = yearCal.getTimeInMillis();
-                        return new TemporalInfo(word, yearStart, yearEnd);
-                    } catch (NumberFormatException e) {
-                        // Not a valid year number, continue
-                    }
-                }
-                // For specific dates like "July 4, 1776" (simplified, needs full parser for robustness)
-                Pattern datePattern = Pattern.compile("([A-Za-z]+)\\s+(\\d{1,2}),\\s*(\\d{4})");
-                Matcher dateMatcher = datePattern.matcher(word);
-                if (dateMatcher.find()) {
-                    try {
-                        int month = getMonthIndex(dateMatcher.group(1));
-                        int day = Integer.parseInt(dateMatcher.group(2));
-                        int year = Integer.parseInt(dateMatcher.group(3));
-                        
-                        Calendar specificDateCal = Calendar.getInstance();
-                        specificDateCal.set(year, month, day, 0, 0, 0);
-                        long dateStart = specificDateCal.getTimeInMillis();
-                        specificDateCal.set(year, month, day, 23, 59, 59);
-                        long dateEnd = specificDateCal.getTimeInMillis();
-                        return new TemporalInfo(word, dateStart, dateEnd);
-                    } catch (Exception e) { /* Fall through */ }
-                }
-                return null;
+    public static boolean detectSarcasmOrIrony(String text) {
+        if (text == null) return false;
+        String lower = text.toLowerCase();
+        // Heuristic: positive word + negative context or vice versa
+        boolean hasPositive = false, hasNegative = false;
+        for (String word : tokenize(lower)) {
+            if (POSITIVE_WORDS.contains(word)) hasPositive = true;
+            if (NEGATIVE_WORDS.contains(word)) hasNegative = true;
         }
+        if (hasPositive && lower.contains("not ")) return true;
+        if (hasNegative && lower.contains("so much for")) return true;
+        if (lower.contains("yeah, right") || lower.contains("as if") || lower.contains("totally")) return true;
+        // Punctuation cues
+        if (lower.contains("!")) {
+            if (hasPositive && hasNegative) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Extracts emotional context (e.g., sadness, joy, anger) from text using keywords.
+     * Returns the detected emotion or "neutral".
+     */
+    public static String extractEmotionalContext(String text) {
+        if (text == null) return "neutral";
+        String lower = text.toLowerCase();
+        if (lower.contains("sad") || lower.contains("unhappy") || lower.contains("depressed") || lower.contains("tragic")) return "sadness";
+        if (lower.contains("happy") || lower.contains("joy") || lower.contains("delighted") || lower.contains("excited")) return "joy";
+        if (lower.contains("angry") || lower.contains("mad") || lower.contains("furious") || lower.contains("rage")) return "anger";
+        if (lower.contains("afraid") || lower.contains("scared") || lower.contains("fear") || lower.contains("terrified")) return "fear";
+        if (lower.contains("surprised") || lower.contains("amazed") || lower.contains("astonished")) return "surprise";
+        if (lower.contains("disgusted") || lower.contains("gross") || lower.contains("revolting")) return "disgust";
+        return "neutral";
+    }
+
+
+    /**
+     * Enhanced temporal expression extraction.
+     * Parses complex temporal expressions, durations, ranges, and ambiguous cases.
+     * Returns a list of TemporalInfo objects with confidence scores and explanations.
+     *
+     * @param text The text to extract temporal information from.
+     * @return A list of TemporalInfoResult (TemporalInfo + confidence + explanation)
+     */
+    public static List<TemporalInfoResult> extractAllTemporalInfo(String text) {
+        List<TemporalInfoResult> results = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) return results;
+        String lower = text.toLowerCase();
+
+        // 1. Absolute year (e.g., 1990, 2020)
+        if (lower.matches(".*\\b(\\d{4})\\b.*")) {
+            Matcher m = Pattern.compile("\\b(\\d{4})\\b").matcher(lower);
+            while (m.find()) {
+                int year = Integer.parseInt(m.group(1));
+                Calendar cal = Calendar.getInstance();
+                cal.set(year, Calendar.JANUARY, 1, 0, 0, 0);
+                long start = cal.getTimeInMillis();
+                cal.set(year, Calendar.DECEMBER, 31, 23, 59, 59);
+                long end = cal.getTimeInMillis();
+                results.add(new TemporalInfoResult(
+                    new TemporalInfo(m.group(1), start, end),
+                    1.0,
+                    "Detected absolute year: " + year
+                ));
+            }
+        }
+
+        // 2. Ranges (e.g., 1990-2000, from 1990 to 2000)
+        Matcher range = Pattern.compile("(\\d{4})\\s*(?:-|to|until|through|and)\\s*(\\d{4})").matcher(lower);
+        while (range.find()) {
+            int startYear = Integer.parseInt(range.group(1));
+            int endYear = Integer.parseInt(range.group(2));
+            Calendar cal = Calendar.getInstance();
+            cal.set(startYear, Calendar.JANUARY, 1, 0, 0, 0);
+            long start = cal.getTimeInMillis();
+            cal.set(endYear, Calendar.DECEMBER, 31, 23, 59, 59);
+            long end = cal.getTimeInMillis();
+            results.add(new TemporalInfoResult(
+                new TemporalInfo(range.group(0), start, end),
+                1.0,
+                "Detected year range: " + startYear + "-" + endYear
+            ));
+        }
+
+        // 3. Relative expressions (e.g., 3 days ago, 2 weeks before, next month)
+        Matcher rel = Pattern.compile("(\\d+)\\s*(day|week|month|year)s?\\s*(ago|before|after|from now|later)").matcher(lower);
+        while (rel.find()) {
+            int num = Integer.parseInt(rel.group(1));
+            String unit = rel.group(2);
+            String direction = rel.group(3);
+            Calendar cal = Calendar.getInstance();
+            long now = System.currentTimeMillis();
+            int field = Calendar.DAY_OF_YEAR;
+            if (unit.startsWith("week")) field = Calendar.WEEK_OF_YEAR;
+            else if (unit.startsWith("month")) field = Calendar.MONTH;
+            else if (unit.startsWith("year")) field = Calendar.YEAR;
+            int sign = (direction.equals("ago") || direction.equals("before")) ? -1 : 1;
+            cal.add(field, sign * num);
+            long target = cal.getTimeInMillis();
+            results.add(new TemporalInfoResult(
+                new TemporalInfo(rel.group(0), target, target),
+                0.9,
+                "Detected relative expression: " + rel.group(0)
+            ));
+        }
+
+        // 4. Simple keywords (today, yesterday, tomorrow, now, last week, next week, etc.)
+        String[] keywords = {"today", "yesterday", "tomorrow", "now", "last week", "next week", "last month", "next month", "last year", "next year", "two years ago", "in the past", "historically", "in the future", "soon"};
+        for (String kw : keywords) {
+            if (lower.contains(kw)) {
+                TemporalInfo ti = extractTemporalInfo(kw);
+                if (ti != null) {
+                    results.add(new TemporalInfoResult(
+                        ti,
+                        0.8,
+                        "Detected keyword: " + kw
+                    ));
+                }
+            }
+        }
+
+        // 5. Ambiguity: If multiple expressions found, mark as ambiguous
+        if (results.size() > 1) {
+            for (TemporalInfoResult r : results) {
+                r.setAmbiguous(true);
+                r.setExplanation(r.getExplanation() + " (ambiguous)");
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * For backward compatibility: extract the most confident temporal info from text.
+     */
+    public static TemporalInfo extractTemporalInfo(String text) {
+        List<TemporalInfoResult> all = extractAllTemporalInfo(text);
+        if (all.isEmpty()) return null;
+        return all.get(0).getTemporalInfo();
+    }
+
+    /**
+     * Result wrapper for advanced temporal extraction.
+     */
+    public static class TemporalInfoResult {
+        private TemporalInfo temporalInfo;
+        private double confidence;
+        private String explanation;
+        private boolean ambiguous;
+        public TemporalInfoResult(TemporalInfo temporalInfo, double confidence, String explanation) {
+            this.temporalInfo = temporalInfo;
+            this.confidence = confidence;
+            this.explanation = explanation;
+            this.ambiguous = false;
+        }
+        public TemporalInfo getTemporalInfo() { return temporalInfo; }
+        public double getConfidence() { return confidence; }
+        public String getExplanation() { return explanation; }
+        public boolean isAmbiguous() { return ambiguous; }
+        public void setAmbiguous(boolean ambiguous) { this.ambiguous = ambiguous; }
+        public void setExplanation(String explanation) { this.explanation = explanation; }
     }
 
     // Helper method to get month index from month name
@@ -575,6 +647,61 @@ public class TextUtils {
         if (word != null && !word.trim().isEmpty()) {
             NEGATIVE_WORDS.remove(word.trim().toLowerCase());
         }
+    }
+
+    /**
+     * Calculate similarity between two strings using Levenshtein distance
+     * @param str1 First string
+     * @param str2 Second string
+     * @return Similarity score between 0.0 and 1.0, where 1.0 is identical
+     */
+    public static double calculateSimilarity(String str1, String str2) {
+        if (str1 == null || str2 == null) {
+            return 0.0;
+        }
+        
+        if (str1.equals(str2)) {
+            return 1.0;
+        }
+        
+        int distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
+        int maxLength = Math.max(str1.length(), str2.length());
+        
+        if (maxLength == 0) {
+            return 1.0;
+        }
+        
+        return 1.0 - ((double) distance / maxLength);
+    }
+    
+    /**
+     * Calculate Levenshtein distance between two strings
+     * @param str1 First string
+     * @param str2 Second string
+     * @return Levenshtein distance
+     */
+    private static int levenshteinDistance(String str1, String str2) {
+        int[][] dp = new int[str1.length() + 1][str2.length() + 1];
+        
+        for (int i = 0; i <= str1.length(); i++) {
+            dp[i][0] = i;
+        }
+        
+        for (int j = 0; j <= str2.length(); j++) {
+            dp[0][j] = j;
+        }
+        
+        for (int i = 1; i <= str1.length(); i++) {
+            for (int j = 1; j <= str2.length(); j++) {
+                if (str1.charAt(i - 1) == str2.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], Math.min(dp[i - 1][j], dp[i][j - 1]));
+                }
+            }
+        }
+        
+        return dp[str1.length()][str2.length()];
     }
 }
 
