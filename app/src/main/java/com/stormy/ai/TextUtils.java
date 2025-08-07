@@ -392,55 +392,55 @@ public class TextUtils {
 
         switch (word) {
             case "today":
-                return new TemporalInfo("today", startOfDay, endOfDay);
+                return new TemporalInfo("today", startOfDay, endOfDay, TemporalInfo.ExpressionType.DATE, false);
             case "yesterday":
-                return new TemporalInfo("yesterday", startOfDay - (24 * 60 * 60 * 1000L), endOfDay - (24 * 60 * 60 * 1000L));
+                return new TemporalInfo("yesterday", startOfDay - (24 * 60 * 60 * 1000L), endOfDay - (24 * 60 * 60 * 1000L), TemporalInfo.ExpressionType.DATE, false);
             case "tomorrow":
-                return new TemporalInfo("tomorrow", startOfDay + (24 * 60 * 60 * 1000L), endOfDay + (24 * 60 * 60 * 1000L));
+                return new TemporalInfo("tomorrow", startOfDay + (24 * 60 * 60 * 1000L), endOfDay + (24 * 60 * 60 * 1000L), TemporalInfo.ExpressionType.DATE, false);
             case "now":
-                return new TemporalInfo("now", currentTime, currentTime);
+                return new TemporalInfo("now", currentTime, currentTime, TemporalInfo.ExpressionType.DATE, false);
             case "last week":
-                return new TemporalInfo("last week", startOfDay - (7 * 24 * 60 * 60 * 1000L), endOfDay - (7 * 24 * 60 * 60 * 1000L));
+                return new TemporalInfo("last week", startOfDay - (7 * 24 * 60 * 60 * 1000L), endOfDay - (7 * 24 * 60 * 60 * 1000L), TemporalInfo.ExpressionType.DURATION, false);
             case "next week":
-                return new TemporalInfo("next week", startOfDay + (7 * 24 * 60 * 60 * 1000L), endOfDay + (7 * 24 * 60 * 60 * 1000L));
+                return new TemporalInfo("next week", startOfDay + (7 * 24 * 60 * 60 * 1000L), endOfDay + (7 * 24 * 60 * 60 * 1000L), TemporalInfo.ExpressionType.DURATION, false);
             case "last month":
                 cal.add(Calendar.MONTH, -1);
                 cal.set(Calendar.DAY_OF_MONTH, 1);
                 long lastMonthStart = cal.getTimeInMillis();
                 cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
                 long lastMonthEnd = cal.getTimeInMillis();
-                return new TemporalInfo("last month", lastMonthStart, lastMonthEnd);
+                return new TemporalInfo("last month", lastMonthStart, lastMonthEnd, TemporalInfo.ExpressionType.DURATION, false);
             case "next month":
                 cal.add(Calendar.MONTH, 1);
                 cal.set(Calendar.DAY_OF_MONTH, 1);
                 long nextMonthStart = cal.getTimeInMillis();
                 cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
                 long nextMonthEnd = cal.getTimeInMillis();
-                return new TemporalInfo("next month", nextMonthStart, nextMonthEnd);
+                return new TemporalInfo("next month", nextMonthStart, nextMonthEnd, TemporalInfo.ExpressionType.DURATION, false);
             case "last year":
                 cal.set(currentYear - 1, Calendar.JANUARY, 1, 0, 0, 0);
                 long lastYearStart = cal.getTimeInMillis();
                 cal.set(currentYear - 1, Calendar.DECEMBER, 31, 23, 59, 59);
                 long lastYearEnd = cal.getTimeInMillis();
-                return new TemporalInfo("last year", lastYearStart, lastYearEnd);
+                return new TemporalInfo("last year", lastYearStart, lastYearEnd, TemporalInfo.ExpressionType.DURATION, false);
             case "next year":
                 cal.set(currentYear + 1, Calendar.JANUARY, 1, 0, 0, 0);
                 long nextYearStart = cal.getTimeInMillis();
                 cal.set(currentYear + 1, Calendar.DECEMBER, 31, 23, 59, 59);
                 long nextYearEnd = cal.getTimeInMillis();
-                return new TemporalInfo("next year", nextYearStart, nextYearEnd);
+                return new TemporalInfo("next year", nextYearStart, nextYearEnd, TemporalInfo.ExpressionType.DURATION, false);
             case "two years ago":
                 cal.set(currentYear - 2, Calendar.JANUARY, 1, 0, 0, 0);
                 long twoYearsAgoStart = cal.getTimeInMillis();
                 cal.set(currentYear - 2, Calendar.DECEMBER, 31, 23, 59, 59);
                 long twoYearsAgoEnd = cal.getTimeInMillis();
-                return new TemporalInfo("two years ago", twoYearsAgoStart, twoYearsAgoEnd);
+                return new TemporalInfo("two years ago", twoYearsAgoStart, twoYearsAgoEnd, TemporalInfo.ExpressionType.DURATION, false);
             case "in the past": // Broad temporal marker
             case "historically":
-                return new TemporalInfo(word, null, currentTime); // Ends now, started indefinitely in past
+                return new TemporalInfo(word, null, currentTime, TemporalInfo.ExpressionType.DURATION, true); // Ends now, started indefinitely in past
             case "in the future": // Broad temporal marker
             case "soon":
-                return new TemporalInfo(word, currentTime, null); // Starts now, ends indefinitely in future
+                return new TemporalInfo(word, currentTime, null, TemporalInfo.ExpressionType.DURATION, true); // Starts now, ends indefinitely in future
 
             // Add months
             case "january": case "february": case "march": case "april": case "may": case "june":
@@ -451,7 +451,7 @@ public class TextUtils {
                     long monthStart = monthCal.getTimeInMillis();
                     monthCal.set(Calendar.DAY_OF_MONTH, monthCal.getActualMaximum(Calendar.DAY_OF_MONTH));
                     long monthEnd = monthCal.getTimeInMillis();
-                    return new TemporalInfo(word, monthStart, monthEnd);
+                    return new TemporalInfo(word, monthStart, monthEnd, TemporalInfo.ExpressionType.DURATION, false);
                 } catch (Exception e) { /* Fall through */ }
 
 
@@ -465,7 +465,7 @@ public class TextUtils {
                         long yearStart = yearCal.getTimeInMillis();
                         yearCal.set(year, Calendar.DECEMBER, 31, 23, 59, 59);
                         long yearEnd = yearCal.getTimeInMillis();
-                        return new TemporalInfo(word, yearStart, yearEnd);
+                        return new TemporalInfo(word, yearStart, yearEnd, TemporalInfo.ExpressionType.DURATION, false);
                     } catch (NumberFormatException e) {
                         // Not a valid year number, continue
                     }
@@ -484,7 +484,7 @@ public class TextUtils {
                         long dateStart = specificDateCal.getTimeInMillis();
                         specificDateCal.set(year, month, day, 23, 59, 59);
                         long dateEnd = specificDateCal.getTimeInMillis();
-                        return new TemporalInfo(word, dateStart, dateEnd);
+                        return new TemporalInfo(word, dateStart, dateEnd, TemporalInfo.ExpressionType.DATE, false);
                     } catch (Exception e) { /* Fall through */ }
                 }
                 return null;
