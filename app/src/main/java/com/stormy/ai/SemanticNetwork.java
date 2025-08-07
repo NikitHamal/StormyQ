@@ -205,4 +205,25 @@ public class SemanticNetwork {
     public int getNodeCount() {
         return nodes.size();
     }
+
+    /**
+     * Adds a new node to the network or updates an existing one with a new weight.
+     * @param nodeName The name of the node to add or update.
+     * @param weight The weight/activation to assign to the node.
+     */
+    public void addOrUpdateNode(String nodeName, double weight) {
+        String stemmedName = TextUtils.stem(nodeName);
+        
+        if (!nodes.containsKey(stemmedName)) {
+            // Create new node
+            SemanticNode newNode = new SemanticNode(stemmedName, decayRate);
+            newNode.setActivation(weight);
+            nodes.put(stemmedName, newNode);
+            adjacencyList.put(newNode, new ArrayList<>());
+        } else {
+            // Update existing node's activation
+            SemanticNode existingNode = nodes.get(stemmedName);
+            existingNode.setActivation(Math.max(existingNode.getActivation(), weight));
+        }
+    }
 }
