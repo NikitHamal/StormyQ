@@ -18,6 +18,7 @@ public class SemanticNode {
     private TemporalInfo temporalInfo; // Temporal information associated with this node (e.g., "in 1990")
     private boolean isNegated; // Flag indicating if this node is in a negated context (e.g., "NOT good")
     private List<ConceptRelation> conceptualRelations; // Higher-level relations this node is involved in
+    private List<TemporalInfo> temporalInfos = new ArrayList<>();
 
     /**
      * Constructor for a SemanticNode.
@@ -47,7 +48,7 @@ public class SemanticNode {
     }
 
     public TemporalInfo getTemporalInfo() {
-        return temporalInfo;
+        return temporalInfos.isEmpty() ? null : temporalInfos.get(0);
     }
 
     public boolean isNegated() {
@@ -56,6 +57,10 @@ public class SemanticNode {
 
     public List<ConceptRelation> getConceptualRelations() {
         return new ArrayList<>(conceptualRelations); // Return a copy to prevent external modification
+    }
+
+    public List<TemporalInfo> getTemporalInfos() {
+        return temporalInfos;
     }
 
     // --- Setters / Modifiers ---
@@ -97,6 +102,14 @@ public class SemanticNode {
      */
     public void setTemporalInfo(TemporalInfo temporalInfo) {
         this.temporalInfo = temporalInfo;
+        if (temporalInfo != null) {
+            if (temporalInfos.isEmpty()) temporalInfos.add(temporalInfo);
+            else temporalInfos.set(0, temporalInfo);
+        }
+    }
+
+    public void addTemporalInfo(TemporalInfo t) {
+        if (t != null) temporalInfos.add(t);
     }
 
     /**

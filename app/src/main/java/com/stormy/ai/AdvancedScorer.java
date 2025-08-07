@@ -168,52 +168,32 @@ public class AdvancedScorer {
     }
 
     /**
-     * Calculates the temporal score of the answer.
+     * Calculates the temporal score of the answer using advanced temporal reasoning.
+     * Considers all detected intervals, ambiguity, and confidence.
      * @param candidate The answer candidate.
      * @param question The question.
      * @return The temporal score.
      */
     private double calculateTemporalScore(AnswerCandidate candidate, String question) {
-        TemporalInfo questionTemporalInfo = TextUtils.extractTemporalInfo(question);
-        TemporalInfo candidateTemporalInfo = TextUtils.extractTemporalInfo(candidate.getText());
-
-        if (questionTemporalInfo == null) {
+        // Use advanced extraction
+        List<TextUtils.TemporalInfoResult> questionTimes = TextUtils.extractAllTemporalInfo(question);
+        List<TextUtils.TemporalInfoResult> candidateTimes = TextUtils.extractAllTemporalInfo(candidate.getText());
+        if (questionTimes.isEmpty()) {
             return 1.0; // No temporal aspect in the question, so no penalty.
         }
-        if (candidateTemporalInfo == null) {
+        if (candidateTimes.isEmpty()) {
             return 0.4; // Question is temporal, but answer is not.
         }
-
-        // Exact match for points in time
-        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isPointInTime()) {
-            return questionTemporalInfo.getStartTimeMillis().equals(candidateTemporalInfo.getStartTimeMillis()) ? 1.0 : 0.1;
-        }
-
-        // Overlap for durations
-        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isDuration()) {
-            long q_start = questionTemporalInfo.getStartTimeMillis();
-            long q_end = questionTemporalInfo.getEndTimeMillis();
-            long c_start = candidateTemporalInfo.getStartTimeMillis();
-            long c_end = candidateTemporalInfo.getEndTimeMillis();
-            if (q_start < c_end && c_start < q_end) {
-                // Calculate overlap percentage for a more granular score
-                long overlap = Math.max(0, Math.min(q_end, c_end) - Math.max(q_start, c_start));
-                long total_duration = Math.max(q_end, c_end) - Math.min(q_start, c_start);
-                return total_duration > 0 ? (double) overlap / total_duration : 0.0;
+        double bestScore = 0.0;
+        for (TextUtils.TemporalInfoResult q : questionTimes) {
+            for (TextUtils.TemporalInfoResult a : candidateTimes) {
+                TemporalReasoner.TemporalValidationResult result = TemporalReasoner.validateTemporalAnswer(q.getTemporalInfo().getRawTemporalExpression(), a.getTemporalInfo().getRawTemporalExpression());
+                // Weight by confidence and ambiguity
+                double score = result.valid ? result.confidence : 0.2 * result.confidence;
+                if (q.isAmbiguous() || a.isAmbiguous()) score *= 0.7;
+                bestScore = Math.max(bestScore, score);
             }
-            return 0.1;
         }
-
-        // One is a point and the other is a duration
-        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isDuration()) {
-            return (questionTemporalInfo.getStartTimeMillis() >= candidateTemporalInfo.getStartTimeMillis() &&
-                    questionTemporalInfo.getStartTimeMillis() <= candidateTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
-        }
-        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isPointInTime()) {
-            return (candidateTemporalInfo.getStartTimeMillis() >= questionTemporalInfo.getStartTimeMillis() &&
-                    candidateTemporalInfo.getStartTimeMillis() <= questionTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
-        }
-
-        return 0.3; // Mismatch in temporal types or other cases
+        return bestScore;
     }
 }

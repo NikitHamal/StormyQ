@@ -121,9 +121,11 @@ public class SemanticNetwork {
             }
 
             // Assign temporal info if available
-            TemporalInfo tempInfo = TextUtils.extractTemporalInfo(rawToken);
-            if (tempInfo != null) {
-                nodes.get(stemmedToken).setTemporalInfo(tempInfo);
+            List<TextUtils.TemporalInfoResult> tempInfos = TextUtils.extractAllTemporalInfo(rawToken);
+            if (!tempInfos.isEmpty()) {
+                for (TextUtils.TemporalInfoResult t : tempInfos) {
+                    nodes.get(stemmedToken).addTemporalInfo(t.getTemporalInfo());
+                }
             }
         }
 
