@@ -317,6 +317,105 @@ public class AnswerExtractor {
     }
 
     /**
+     * Extracts key aspects from the question (who, what, when, where, why, how, numerical).
+     */
+    private List<String> extractAspects(String question) {
+        List<String> aspects = new ArrayList<>();
+        String q = question.toLowerCase();
+        if (q.contains("who")) aspects.add("who");
+        if (q.contains("what")) aspects.add("what");
+        if (q.contains("when")) aspects.add("when");
+        if (q.contains("where")) aspects.add("where");
+        if (q.contains("why")) aspects.add("why");
+        if (q.contains("how")) aspects.add("how");
+        if (q.matches(".*\\d+.*|how many|how much|number|amount|percent|percentage|rate|date|year|age.*")) aspects.add("numerical");
+        return aspects;
+    }
+
+    /**
+     * Synthesizes a structured answer covering all aspects, with enhanced formatting and optional highlighting/confidence notes.
+     */
+    public String synthesizeStructuredAnswer(List<AnswerCandidate> candidates, String question, AdvancedScorer.ConfidenceResult confidenceResult) {
+        List<String> aspects = extractAspects(question);
+        StringBuilder answer = new StringBuilder();
+        for (String aspect : aspects) {
+            AnswerCandidate best = selectBestForAspect(candidates, aspect);
+            if (best != null) {
+                String label = aspect.substring(0, 1).toUpperCase() + aspect.substring(1) + ": ";
+                String value = highlightAspect(best.getText(), aspect);
+                answer.append(label).append(value).append("\n");
+            }
+        }
+        if (answer.length() == 0 && !candidates.isEmpty()) {
+            answer.append(candidates.get(0).getText());
+        }
+        // Add confidence/uncertainty note if needed
+        if (confidenceResult != null && confidenceResult.confidence < 0.7) {
+            answer.append("\n(Note: This answer is synthesized from uncertain or conflicting sources. Confidence: ")
+                  .append(String.format("%.2f", confidenceResult.confidence)).append(")");
+        }
+        return answer.toString().trim();
+    }
+
+    /**
+     * Selects the best candidate for a given aspect using SimMetrics similarity.
+     */
+    private AnswerCandidate selectBestForAspect(List<AnswerCandidate> candidates, String aspect) {
+        StringMetric metric = StringMetrics.levenshtein();
+        double bestScore = 0.0;
+        AnswerCandidate best = null;
+        for (AnswerCandidate c : candidates) {
+            double score = 0.0;
+            String text = c.getText().toLowerCase();
+            switch (aspect) {
+                case "who":
+                    if (text.matches(".*\\b[A-Z][a-z]+\\b.*")) score += 1.0;
+                    break;
+                case "when":
+                    if (text.matches(".*\\d{4}.*|today|yesterday|tomorrow|month|year|week.*")) score += 1.0;
+                    break;
+                case "where":
+                    if (text.matches(".*\\b(in|at|on|from|to) [A-Z][a-z]+.*")) score += 1.0;
+                    break;
+                case "why":
+                    if (text.contains("because") || text.contains("due to") || text.contains("as a result")) score += 1.0;
+                    break;
+                case "how":
+                    if (text.contains("by ") || text.contains("using ") || text.contains("with ") || text.contains("through ")) score += 1.0;
+                    break;
+                case "numerical":
+                    if (text.matches(".*\\d+.*|percent|percentage|rate|amount|number|year|date|age.*")) score += 1.0;
+                    break;
+                default:
+                    break;
+            }
+            // Use SimMetrics to boost if aspect keyword is present
+            score += metric.compare(text, aspect);
+            if (score > bestScore) {
+                bestScore = score;
+                best = c;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Highlights or emphasizes key answer parts for an aspect (e.g., bold numbers, dates, names).
+     */
+    private String highlightAspect(String text, String aspect) {
+        switch (aspect) {
+            case "when":
+            case "numerical":
+                return text.replaceAll("(\\d{4}|\\d+|percent|percentage|rate|amount|number|year|date|age)", "**$1**");
+            case "who":
+            case "where":
+                return text.replaceAll("(\\b[A-Z][a-z]+\\b)", "**$1**");
+            default:
+                return text;
+        }
+    }
+
+    /**
      * Sets the activation threshold used for answer extraction.
      * @param activationThreshold The new activation threshold.
      */
