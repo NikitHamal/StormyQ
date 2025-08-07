@@ -52,4 +52,17 @@ public class AnswerResult {
     public void setConfidence(double confidence) {
         this.confidence = confidence;
     }
+
+    public String formatAnswer(String question) {
+        if (question.toLowerCase().startsWith("what are") || question.toLowerCase().startsWith("list")) {
+            // Simple list formatting
+            String[] items = this.answer.split(",| and ");
+            StringBuilder formattedAnswer = new StringBuilder();
+            for (String item : items) {
+                formattedAnswer.append("- ").append(item.trim()).append("\n");
+            }
+            return formattedAnswer.toString();
+        }
+        return this.answer;
+    }
 }

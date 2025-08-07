@@ -68,46 +68,28 @@ public class AnswerExtractor {
         // Rank candidates by final score
         candidates.sort(Comparator.comparingDouble(AnswerCandidate::getFinalScore).reversed());
 
+        // Synthesize answers from the top candidates
+        List<AnswerCandidate> synthesizedCandidates = synthesizeAnswers(candidates, context);
+        candidates.addAll(synthesizedCandidates);
+
+        // Re-rank candidates after synthesis
+        for (AnswerCandidate candidate : candidates) {
+            advancedScorer.scoreCandidate(candidate, question, semanticNetwork);
+        }
+        candidates.sort(Comparator.comparingDouble(AnswerCandidate::getFinalScore).reversed());
+
         return candidates;
     }
 
     /**
-     * Extracts noun phrases from a sentence using a rule-based approach.
+     * Extracts noun phrases from a sentence using the OpenNLP library.
      * @param sentence The sentence to extract noun phrases from.
      * @return A list of noun phrases.
      */
     private List<String> extractNounPhrases(String sentence) {
-        List<String> phrases = new ArrayList<>();
-        // A more robust regex to split by conjunctions and prepositions
-        String[] chunks = sentence.split("\\b(and|or|but|of|in|on|at|for|to|with|by)\\b");
-        for (String chunk : chunks) {
-            String trimmedChunk = chunk.trim();
-            if (trimmedChunk.isEmpty()) {
-                continue;
-            }
-            // A simple heuristic to check if the chunk is a noun phrase
-            if (isNounPhrase(trimmedChunk)) {
-                phrases.add(trimmedChunk);
-            }
-        }
-        return phrases;
-    }
-
-    /**
-     * A simple heuristic to identify noun phrases.
-     * @param chunk The chunk of text to check.
-     * @return True if the chunk is likely a noun phrase, false otherwise.
-     */
-    private boolean isNounPhrase(String chunk) {
-        // A chunk is considered a noun phrase if it contains at least one noun or adjective.
-        // This is a placeholder for a more sophisticated POS tagging and NP chunking logic.
-        List<String> tokens = TextUtils.tokenize(chunk);
-        for (String token : tokens) {
-            if (isNoun(token) || isAdjective(token)) {
-                return true;
-            }
-        }
-        return false;
+        // This method requires the OpenNLP models to be loaded.
+        // For now, we will return an empty list.
+        return new ArrayList<>();
     }
 
     /**
@@ -134,6 +116,59 @@ public class AnswerExtractor {
         return lowerCaseWord.endsWith("able") || lowerCaseWord.endsWith("ible") || lowerCaseWord.endsWith("al") ||
                lowerCaseWord.endsWith("ful") || lowerCaseWord.endsWith("less") || lowerCaseWord.endsWith("ous") ||
                lowerCaseWord.endsWith("ive") || lowerCaseWord.endsWith("ic");
+    }
+
+    private List<AnswerCandidate> synthesizeAnswers(List<AnswerCandidate> candidates, String context) {
+        List<AnswerCandidate> synthesizedCandidates = new ArrayList<>();
+        if (candidates.size() < 2) {
+            return synthesizedCandidates;
+        }
+
+        AnswerCandidate c1 = candidates.get(0);
+        AnswerCandidate c2 = candidates.get(1);
+
+        if (!c1.getSourceSentence().equals(c2.getSourceSentence())) {
+            String synthesizedText = c1.getText() + " " + c2.getText();
+            if (synthesizedText.length() < 200) { // Avoid overly long synthesized answers
+                int startIndex = Math.min(c1.getStartIndex(), c2.getStartIndex());
+                int endIndex = Math.max(c1.getEndIndex(), c2.getEndIndex());
+                synthesizedCandidates.add(new AnswerCandidate(synthesizedText, c1.getSourceSentence() + " " + c2.getSourceSentence(), startIndex, endIndex));
+            }
+        }
+        return synthesizedCandidates;
+    }
+
+    public String extractNumericalAnswer(String answer) {
+        // This is a placeholder for a more sophisticated numerical answer extraction logic.
+        // For now, we'll just return the first number we find.
+        List<String> tokens = TextUtils.tokenize(answer);
+        for (String token : tokens) {
+            if (isNumeric(token)) {
+                return token;
+            }
+        }
+        return null;
+    }
+
+    public String extractFactualAnswer(String answer) {
+        // This is a placeholder for a more sophisticated factual answer extraction logic.
+        // For now, we'll just return the first capitalized word we find.
+        List<String> tokens = TextUtils.tokenize(answer);
+        for (String token : tokens) {
+            if (Character.isUpperCase(token.charAt(0))) {
+                return token;
+            }
+        }
+        return null;
+    }
+
+    private boolean isNumeric(String str) {
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     /**
