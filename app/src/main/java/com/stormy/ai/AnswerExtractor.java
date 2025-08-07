@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import org.simmetrics.StringMetric;
+import org.simmetrics.metrics.StringMetrics;
 
 /**
  * Responsible for extracting and ranking potential answer candidates from the context.
@@ -69,6 +71,80 @@ public class AnswerExtractor {
         candidates.sort(Comparator.comparingDouble(AnswerCandidate::getFinalScore).reversed());
 
         return candidates;
+    }
+
+    /**
+     * Synthesizes answers from top candidates to cover all question aspects.
+     * Uses SimMetrics to merge similar/overlapping candidates.
+     */
+    public List<AnswerCandidate> synthesizeAndFormatAnswers(List<AnswerCandidate> candidates, String question) {
+        List<AnswerCandidate> synthesized = new ArrayList<>();
+        if (candidates.isEmpty()) return synthesized;
+        // Use SimMetrics for similarity
+        StringMetric metric = StringMetrics.levenshtein();
+        // Group similar candidates
+        boolean[] used = new boolean[candidates.size()];
+        for (int i = 0; i < candidates.size(); i++) {
+            if (used[i]) continue;
+            String base = candidates.get(i).getText();
+            StringBuilder merged = new StringBuilder(base);
+            used[i] = true;
+            for (int j = i + 1; j < candidates.size(); j++) {
+                if (used[j]) continue;
+                String other = candidates.get(j).getText();
+                float sim = metric.compare(base, other);
+                if (sim > 0.7) { // Merge if highly similar
+                    merged.append("; ").append(other);
+                    used[j] = true;
+                }
+            }
+            synthesized.add(new AnswerCandidate(merged.toString(), base, 0, 0));
+        }
+        // Check completeness
+        for (AnswerCandidate candidate : synthesized) {
+            if (!isComplete(candidate.getText(), question)) {
+                candidate.setCompletenessScore(0.5); // Penalize incomplete
+            } else {
+                candidate.setCompletenessScore(1.0);
+            }
+        }
+        // Format answers
+        for (AnswerCandidate candidate : synthesized) {
+            candidate = formatAnswer(candidate, question);
+        }
+        return synthesized;
+    }
+
+    /**
+     * Checks if the answer covers all aspects of the question (who, what, when, where, why, how).
+     */
+    private boolean isComplete(String answer, String question) {
+        String q = question.toLowerCase();
+        if (q.contains("who") && !answer.matches(".*\\b[A-Z][a-z]+\\b.*")) return false;
+        if (q.contains("when") && !answer.matches(".*\\d{4}.*|today|yesterday|tomorrow|month|year|week.*")) return false;
+        if (q.contains("where") && !answer.matches(".*\\b(in|at|on|from|to) [A-Z][a-z]+.*")) return false;
+        if (q.contains("why") && !answer.matches(".*because.*|due to.*|as a result.*")) return false;
+        if (q.contains("how") && !answer.matches(".*by.*|using.*|with.*|through.*")) return false;
+        return true;
+    }
+
+    /**
+     * Formats the answer based on question type (list, fact, explanation).
+     */
+    private AnswerCandidate formatAnswer(AnswerCandidate candidate, String question) {
+        String q = question.toLowerCase();
+        String text = candidate.getText();
+        if (q.startsWith("list") || q.contains("which of the following")) {
+            // Format as bullet list
+            String[] items = text.split("; ");
+            StringBuilder sb = new StringBuilder();
+            for (String item : items) {
+                sb.append("- ").append(item.trim()).append("\n");
+            }
+            candidate = new AnswerCandidate(sb.toString().trim(), candidate.getSourceSentence(), candidate.getStartIndex(), candidate.getEndIndex());
+        }
+        // Add more formatting rules as needed
+        return candidate;
     }
 
     /**
