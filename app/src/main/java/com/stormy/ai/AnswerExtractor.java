@@ -6,8 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import org.simmetrics.StringMetric;
-import org.simmetrics.metrics.StringMetrics;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 
 /**
  * Responsible for extracting and ranking potential answer candidates from the context.
@@ -75,14 +74,12 @@ public class AnswerExtractor {
 
     /**
      * Synthesizes answers from top candidates to cover all question aspects.
-     * Uses SimMetrics to merge similar/overlapping candidates.
+     * Uses LevenshteinDistance to merge similar/overlapping candidates.
      */
     public List<AnswerCandidate> synthesizeAndFormatAnswers(List<AnswerCandidate> candidates, String question) {
         List<AnswerCandidate> synthesized = new ArrayList<>();
         if (candidates.isEmpty()) return synthesized;
-        // Use SimMetrics for similarity
-        StringMetric metric = StringMetrics.levenshtein();
-        // Group similar candidates
+        LevenshteinDistance metric = new LevenshteinDistance();
         boolean[] used = new boolean[candidates.size()];
         for (int i = 0; i < candidates.size(); i++) {
             if (used[i]) continue;
@@ -92,23 +89,23 @@ public class AnswerExtractor {
             for (int j = i + 1; j < candidates.size(); j++) {
                 if (used[j]) continue;
                 String other = candidates.get(j).getText();
-                float sim = metric.compare(base, other);
-                if (sim > 0.7) { // Merge if highly similar
+                int dist = metric.apply(base, other);
+                int maxLen = Math.max(base.length(), other.length());
+                double sim = (maxLen == 0) ? 1.0 : 1.0 - ((double) dist / maxLen);
+                if (sim > 0.7) {
                     merged.append("; ").append(other);
                     used[j] = true;
                 }
             }
             synthesized.add(new AnswerCandidate(merged.toString(), base, 0, 0));
         }
-        // Check completeness
         for (AnswerCandidate candidate : synthesized) {
             if (!isComplete(candidate.getText(), question)) {
-                candidate.setCompletenessScore(0.5); // Penalize incomplete
+                candidate.setCompletenessScore(0.5);
             } else {
                 candidate.setCompletenessScore(1.0);
             }
         }
-        // Format answers
         for (AnswerCandidate candidate : synthesized) {
             candidate = formatAnswer(candidate, question);
         }
@@ -358,10 +355,10 @@ public class AnswerExtractor {
     }
 
     /**
-     * Selects the best candidate for a given aspect using SimMetrics similarity.
+     * Selects the best candidate for a given aspect using LevenshteinDistance similarity.
      */
     private AnswerCandidate selectBestForAspect(List<AnswerCandidate> candidates, String aspect) {
-        StringMetric metric = StringMetrics.levenshtein();
+        LevenshteinDistance metric = new LevenshteinDistance();
         double bestScore = 0.0;
         AnswerCandidate best = null;
         for (AnswerCandidate c : candidates) {
@@ -389,8 +386,10 @@ public class AnswerExtractor {
                 default:
                     break;
             }
-            // Use SimMetrics to boost if aspect keyword is present
-            score += metric.compare(text, aspect);
+            int dist = metric.apply(text, aspect);
+            int maxLen = Math.max(text.length(), aspect.length());
+            double sim = (maxLen == 0) ? 1.0 : 1.0 - ((double) dist / maxLen);
+            score += sim;
             if (score > bestScore) {
                 bestScore = score;
                 best = c;
