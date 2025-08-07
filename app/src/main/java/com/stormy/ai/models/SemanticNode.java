@@ -26,6 +26,12 @@ public class SemanticNode {
     private List<SemanticNode> parts = new ArrayList<>();
     private List<SemanticNode> wholes = new ArrayList<>();
 
+    // Node metadata
+    private int usageCount = 0;
+    private long lastActivated = 0L;
+    private List<String> tags = new ArrayList<>();
+    private float[] embedding; // Optional lightweight vector
+
     /**
      * Constructor for a SemanticNode.
      * @param name The name (word/concept) of the node.
@@ -68,6 +74,15 @@ public class SemanticNode {
     public List<TemporalInfo> getTemporalInfos() {
         return temporalInfos;
     }
+
+    public int getUsageCount() { return usageCount; }
+    public void incrementUsage() { usageCount++; }
+    public long getLastActivated() { return lastActivated; }
+    public void setLastActivated(long ts) { lastActivated = ts; }
+    public List<String> getTags() { return tags; }
+    public void addTag(String tag) { if (tag != null && !tags.contains(tag)) tags.add(tag); }
+    public float[] getEmbedding() { return embedding; }
+    public void setEmbedding(float[] embedding) { this.embedding = embedding; }
 
     // --- Setters / Modifiers ---
 

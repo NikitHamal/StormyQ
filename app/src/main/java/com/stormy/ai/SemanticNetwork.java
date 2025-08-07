@@ -12,6 +12,10 @@ import java.util.Map;
 import java.util.Set;
 import org.simmetrics.StringMetric;
 import org.simmetrics.metrics.StringMetrics;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * Manages the core semantic network structure: nodes and their connections (edges).
@@ -301,5 +305,95 @@ public class SemanticNetwork {
             if (type.equals("is-a")) addIsARelationship(source, target);
             if (type.equals("part-of")) addPartOfRelationship(source, target);
         }
+    }
+
+    /**
+     * Extracts a subgraph containing only nodes and edges relevant to the given keywords.
+     */
+    public SemanticNetwork extractSubgraph(List<String> keywords) {
+        SemanticNetwork subgraph = new SemanticNetwork(this.decayRate);
+        for (String keyword : keywords) {
+            String stem = TextUtils.stem(keyword);
+            SemanticNode node = nodes.get(stem);
+            if (node != null) {
+                subgraph.nodes.put(stem, node);
+                List<SemanticEdge> edges = adjacencyList.get(node);
+                if (edges != null) subgraph.adjacencyList.put(node, new ArrayList<>(edges));
+            }
+        }
+        return subgraph;
+    }
+
+    /**
+     * Explains the reasoning path from source to target node (if exists).
+     * Returns a list of node names and edge types traversed.
+     */
+    public List<String> explainPath(String source, String target) {
+        List<String> path = new ArrayList<>();
+        String src = TextUtils.stem(source);
+        String tgt = TextUtils.stem(target);
+        SemanticNode start = nodes.get(src);
+        SemanticNode end = nodes.get(tgt);
+        if (start == null || end == null) return path;
+        // Simple BFS for path
+        Map<SemanticNode, SemanticNode> prev = new HashMap<>();
+        Queue<SemanticNode> queue = new LinkedList<>();
+        Set<SemanticNode> visited = new HashSet<>();
+        queue.add(start);
+        visited.add(start);
+        while (!queue.isEmpty()) {
+            SemanticNode curr = queue.poll();
+            if (curr.equals(end)) break;
+            List<SemanticEdge> edges = adjacencyList.get(curr);
+            if (edges == null) continue;
+            for (SemanticEdge edge : edges) {
+                SemanticNode next = edge.getTarget();
+                if (!visited.contains(next)) {
+                    prev.put(next, curr);
+                    queue.add(next);
+                    visited.add(next);
+                }
+            }
+        }
+        // Reconstruct path
+        if (!prev.containsKey(end)) return path;
+        List<SemanticNode> nodePath = new ArrayList<>();
+        for (SemanticNode at = end; at != null; at = prev.get(at)) nodePath.add(at);
+        Collections.reverse(nodePath);
+        for (int i = 0; i < nodePath.size() - 1; i++) {
+            SemanticNode n1 = nodePath.get(i);
+            SemanticNode n2 = nodePath.get(i + 1);
+            List<SemanticEdge> edges = adjacencyList.get(n1);
+            String edgeType = "";
+            if (edges != null) {
+                for (SemanticEdge edge : edges) {
+                    if (edge.getTarget().equals(n2)) {
+                        edgeType = edge.getType();
+                        break;
+                    }
+                }
+            }
+            path.add(n1.getName() + " -[" + edgeType + "]-> " + n2.getName());
+        }
+        return path;
+    }
+
+    /**
+     * Computes similarity between two nodes using their embeddings (if available).
+     * Returns cosine similarity, or -1 if not available.
+     */
+    public double embeddingSimilarity(String nodeA, String nodeB) {
+        SemanticNode a = nodes.get(TextUtils.stem(nodeA));
+        SemanticNode b = nodes.get(TextUtils.stem(nodeB));
+        if (a == null || b == null || a.getEmbedding() == null || b.getEmbedding() == null) return -1.0;
+        float[] va = a.getEmbedding();
+        float[] vb = b.getEmbedding();
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i < va.length; i++) {
+            dot += va[i] * vb[i];
+            normA += va[i] * va[i];
+            normB += vb[i] * vb[i];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 }
