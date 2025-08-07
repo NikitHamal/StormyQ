@@ -11,6 +11,12 @@ import java.util.stream.Collectors;
  */
 public class AdvancedScorer {
 
+    private final TemporalReasoner temporalReasoner;
+
+    public AdvancedScorer() {
+        this.temporalReasoner = new TemporalReasoner();
+    }
+
     /**
      * Scores an answer candidate based on various dimensions.
      * @param candidate The answer candidate to score.
@@ -184,36 +190,38 @@ public class AdvancedScorer {
             return 0.4; // Question is temporal, but answer is not.
         }
 
-        // Exact match for points in time
-        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isPointInTime()) {
-            return questionTemporalInfo.getStartTimeMillis().equals(candidateTemporalInfo.getStartTimeMillis()) ? 1.0 : 0.1;
+        if (!temporalReasoner.isValid(questionTemporalInfo) || !temporalReasoner.isValid(candidateTemporalInfo)) {
+            return 0.2; // Invalid temporal information
         }
 
-        // Overlap for durations
-        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isDuration()) {
-            long q_start = questionTemporalInfo.getStartTimeMillis();
-            long q_end = questionTemporalInfo.getEndTimeMillis();
-            long c_start = candidateTemporalInfo.getStartTimeMillis();
-            long c_end = candidateTemporalInfo.getEndTimeMillis();
-            if (q_start < c_end && c_start < q_end) {
-                // Calculate overlap percentage for a more granular score
-                long overlap = Math.max(0, Math.min(q_end, c_end) - Math.max(q_start, c_start));
-                long total_duration = Math.max(q_end, c_end) - Math.min(q_start, c_start);
-                return total_duration > 0 ? (double) overlap / total_duration : 0.0;
-            }
-            return 0.1;
+        if (temporalReasoner.isDuring(candidateTemporalInfo, questionTemporalInfo)) {
+            return 1.0;
+        }
+        if (temporalReasoner.isBefore(candidateTemporalInfo, questionTemporalInfo)) {
+            return 0.8;
+        }
+        if (temporalReasoner.isAfter(candidateTemporalInfo, questionTemporalInfo)) {
+            return 0.8;
         }
 
-        // One is a point and the other is a duration
-        if (questionTemporalInfo.isPointInTime() && candidateTemporalInfo.isDuration()) {
-            return (questionTemporalInfo.getStartTimeMillis() >= candidateTemporalInfo.getStartTimeMillis() &&
-                    questionTemporalInfo.getStartTimeMillis() <= candidateTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
+        // Historical context and relevance
+        if (isHistorical(questionTemporalInfo) && !isHistorical(candidateTemporalInfo)) {
+            return 0.2; // Question is historical, but answer is not
         }
-        if (questionTemporalInfo.isDuration() && candidateTemporalInfo.isPointInTime()) {
-            return (candidateTemporalInfo.getStartTimeMillis() >= questionTemporalInfo.getStartTimeMillis() &&
-                    candidateTemporalInfo.getStartTimeMillis() <= questionTemporalInfo.getEndTimeMillis()) ? 0.9 : 0.1;
+        if (!isHistorical(questionTemporalInfo) && isHistorical(candidateTemporalInfo)) {
+            return 0.2; // Question is not historical, but answer is
         }
 
         return 0.3; // Mismatch in temporal types or other cases
+    }
+
+    private boolean isHistorical(TemporalInfo t) {
+        // A simple heuristic to check if the temporal information is historical.
+        // A more advanced implementation would use a knowledge base of historical events.
+        if (t == null || t.getStartTimeMillis() == null) {
+            return false;
+        }
+        long twoYearsInMillis = 2L * 365 * 24 * 60 * 60 * 1000;
+        return System.currentTimeMillis() - t.getStartTimeMillis() > twoYearsInMillis;
     }
 }

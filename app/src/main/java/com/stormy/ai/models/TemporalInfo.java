@@ -8,21 +8,25 @@ package com.stormy.ai.models;
  * temporal relations like 'before', 'after', 'during').
  */
 public class TemporalInfo {
-    private String rawTemporalExpression; // The original temporal phrase (e.g., "last year", "in 1990")
-    private Long startTimeMillis;         // Numeric representation of start time (e.g., milliseconds since epoch, or a year)
-    private Long endTimeMillis;           // Numeric representation of end time
+    private String rawTemporalExpression;
+    private Long startTimeMillis;
+    private Long endTimeMillis;
+    private ExpressionType expressionType;
+    private boolean isAmbiguous;
 
-    /**
-     * Constructor for TemporalInfo.
-     *
-     * @param rawTemporalExpression The raw text expression (e.g., "yesterday", "July 4, 1776").
-     * @param startTimeMillis A numerical representation of the start time (e.g., timestamp, year). Can be null.
-     * @param endTimeMillis A numerical representation of the end time. Can be null.
-     */
-    public TemporalInfo(String rawTemporalExpression, Long startTimeMillis, Long endTimeMillis) {
+    public enum ExpressionType {
+        DATE,
+        DURATION,
+        SEQUENCE,
+        UNKNOWN
+    }
+
+    public TemporalInfo(String rawTemporalExpression, Long startTimeMillis, Long endTimeMillis, ExpressionType expressionType, boolean isAmbiguous) {
         this.rawTemporalExpression = rawTemporalExpression;
         this.startTimeMillis = startTimeMillis;
         this.endTimeMillis = endTimeMillis;
+        this.expressionType = expressionType;
+        this.isAmbiguous = isAmbiguous;
     }
 
     // --- Getters ---
@@ -54,12 +58,22 @@ public class TemporalInfo {
         return startTimeMillis != null && endTimeMillis != null && !startTimeMillis.equals(endTimeMillis);
     }
 
+    public ExpressionType getExpressionType() {
+        return expressionType;
+    }
+
+    public boolean isAmbiguous() {
+        return isAmbiguous;
+    }
+
     @Override
     public String toString() {
         return "TemporalInfo{" +
-               "expression='" + rawTemporalExpression + '\'' +
-               ", start=" + (startTimeMillis != null ? startTimeMillis : "N/A") +
-               ", end=" + (endTimeMillis != null ? endTimeMillis : "N/A") +
-               '}';
+                "expression='" + rawTemporalExpression + '\'' +
+                ", start=" + (startTimeMillis != null ? startTimeMillis : "N/A") +
+                ", end=" + (endTimeMillis != null ? endTimeMillis : "N/A") +
+                ", type=" + expressionType +
+                ", ambiguous=" + isAmbiguous +
+                '}';
     }
 }
