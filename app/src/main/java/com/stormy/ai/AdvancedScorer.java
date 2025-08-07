@@ -196,4 +196,28 @@ public class AdvancedScorer {
         }
         return bestScore;
     }
+
+    /**
+     * Calculates the sentiment match score between question and answer.
+     * Prefers answers with matching sentiment/emotion, penalizes mismatches, flags sarcasm/irony.
+     */
+    private double calculateSentimentScore(AnswerCandidate candidate, String question) {
+        int qSentiment = TextUtils.getNuancedSentimentScore(question);
+        int aSentiment = TextUtils.getNuancedSentimentScore(candidate.getText());
+        String qEmotion = TextUtils.extractEmotionalContext(question);
+        String aEmotion = TextUtils.extractEmotionalContext(candidate.getText());
+        boolean sarcasm = TextUtils.detectSarcasmOrIrony(candidate.getText());
+        // Sentiment match
+        double score = (qSentiment == aSentiment) ? 1.0 : 0.5;
+        // Emotion match
+        if (!qEmotion.equals("neutral") && qEmotion.equals(aEmotion)) score += 0.2;
+        // Penalize strong mismatch
+        if (Math.abs(qSentiment - aSentiment) > 1) score -= 0.3;
+        // Sarcasm/irony penalty
+        if (sarcasm) score -= 0.2;
+        // Clamp
+        if (score > 1.0) score = 1.0;
+        if (score < 0.0) score = 0.0;
+        return score;
+    }
 }

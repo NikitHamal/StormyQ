@@ -366,6 +366,75 @@ public class TextUtils {
         return score;
     }
 
+    /**
+     * Returns a nuanced sentiment score: -2 (very negative), -1 (negative), 0 (neutral), 1 (positive), 2 (very positive).
+     * Considers negation, intensifiers, and context.
+     */
+    public static int getNuancedSentimentScore(String text) {
+        if (text == null || text.trim().isEmpty()) return 0;
+        String lower = text.toLowerCase();
+        int score = 0;
+        int boost = 0;
+        String[] tokens = tokenize(lower).toArray(new String[0]);
+        for (int i = 0; i < tokens.length; i++) {
+            String word = tokens[i];
+            if (POSITIVE_WORDS.contains(word)) score++;
+            if (NEGATIVE_WORDS.contains(word)) score--;
+            // Intensifiers
+            if (word.equals("very") || word.equals("extremely") || word.equals("so") || word.equals("super")) boost++;
+            // Diminishers
+            if (word.equals("slightly") || word.equals("somewhat") || word.equals("barely")) boost--;
+            // Negation
+            if (isNegationWord(word) && i + 1 < tokens.length) {
+                if (POSITIVE_WORDS.contains(tokens[i + 1])) score--;
+                if (NEGATIVE_WORDS.contains(tokens[i + 1])) score++;
+            }
+        }
+        int finalScore = score + (boost > 0 ? (score > 0 ? 1 : (score < 0 ? -1 : 0)) : 0);
+        if (finalScore > 1) return 2;
+        if (finalScore < -1) return -2;
+        return finalScore;
+    }
+
+    /**
+     * Detects sarcasm or irony using lightweight heuristics.
+     * Returns true if likely sarcastic/ironic, false otherwise.
+     */
+    public static boolean detectSarcasmOrIrony(String text) {
+        if (text == null) return false;
+        String lower = text.toLowerCase();
+        // Heuristic: positive word + negative context or vice versa
+        boolean hasPositive = false, hasNegative = false;
+        for (String word : tokenize(lower)) {
+            if (POSITIVE_WORDS.contains(word)) hasPositive = true;
+            if (NEGATIVE_WORDS.contains(word)) hasNegative = true;
+        }
+        if (hasPositive && lower.contains("not ")) return true;
+        if (hasNegative && lower.contains("so much for")) return true;
+        if (lower.contains("yeah, right") || lower.contains("as if") || lower.contains("totally")) return true;
+        // Punctuation cues
+        if (lower.contains("!")) {
+            if (hasPositive && hasNegative) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Extracts emotional context (e.g., sadness, joy, anger) from text using keywords.
+     * Returns the detected emotion or "neutral".
+     */
+    public static String extractEmotionalContext(String text) {
+        if (text == null) return "neutral";
+        String lower = text.toLowerCase();
+        if (lower.contains("sad") || lower.contains("unhappy") || lower.contains("depressed") || lower.contains("tragic")) return "sadness";
+        if (lower.contains("happy") || lower.contains("joy") || lower.contains("delighted") || lower.contains("excited")) return "joy";
+        if (lower.contains("angry") || lower.contains("mad") || lower.contains("furious") || lower.contains("rage")) return "anger";
+        if (lower.contains("afraid") || lower.contains("scared") || lower.contains("fear") || lower.contains("terrified")) return "fear";
+        if (lower.contains("surprised") || lower.contains("amazed") || lower.contains("astonished")) return "surprise";
+        if (lower.contains("disgusted") || lower.contains("gross") || lower.contains("revolting")) return "disgust";
+        return "neutral";
+    }
+
 
     /**
      * Enhanced temporal expression extraction.
