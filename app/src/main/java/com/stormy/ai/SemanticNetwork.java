@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.simmetrics.StringMetric;
+import org.simmetrics.metrics.StringMetrics;
 
 /**
  * Manages the core semantic network structure: nodes and their connections (edges).
@@ -226,6 +228,78 @@ public class SemanticNetwork {
             // Update existing node's activation
             SemanticNode existingNode = nodes.get(stemmedName);
             existingNode.setActivation(Math.max(existingNode.getActivation(), weight));
+        }
+    }
+
+    /**
+     * Adds an is-a (hypernym/hyponym) relationship between two nodes.
+     */
+    public void addIsARelationship(String child, String parent) {
+        SemanticNode childNode = nodes.get(TextUtils.stem(child));
+        SemanticNode parentNode = nodes.get(TextUtils.stem(parent));
+        if (childNode != null && parentNode != null) {
+            childNode.addParent(parentNode);
+            parentNode.addChild(childNode);
+        }
+    }
+
+    /**
+     * Adds a part-of (meronym/holonym) relationship between two nodes.
+     */
+    public void addPartOfRelationship(String part, String whole) {
+        SemanticNode partNode = nodes.get(TextUtils.stem(part));
+        SemanticNode wholeNode = nodes.get(TextUtils.stem(whole));
+        if (partNode != null && wholeNode != null) {
+            partNode.addWhole(wholeNode);
+            wholeNode.addPart(partNode);
+        }
+    }
+
+    /**
+     * Adds a fuzzy edge using SimMetrics similarity.
+     */
+    public void addFuzzyEdge(String source, String target, double minSimilarity) {
+        StringMetric metric = StringMetrics.levenshtein();
+        double sim = metric.compare(source, target);
+        if (sim >= minSimilarity) {
+            SemanticNode sourceNode = nodes.get(TextUtils.stem(source));
+            SemanticNode targetNode = nodes.get(TextUtils.stem(target));
+            if (sourceNode != null && targetNode != null) {
+                addEdge(sourceNode, targetNode, false);
+            }
+        }
+    }
+
+    /**
+     * Strengthens edges dynamically based on co-activation statistics.
+     * (Call this after a spreading activation run.)
+     */
+    public void strengthenEdgesByCoactivation(List<String> activatedNodes) {
+        for (int i = 0; i < activatedNodes.size(); i++) {
+            for (int j = i + 1; j < activatedNodes.size(); j++) {
+                SemanticNode n1 = nodes.get(TextUtils.stem(activatedNodes.get(i)));
+                SemanticNode n2 = nodes.get(TextUtils.stem(activatedNodes.get(j)));
+                if (n1 != null && n2 != null) {
+                    addEdge(n1, n2, false);
+                    addEdge(n2, n1, false);
+                }
+            }
+        }
+    }
+
+    /**
+     * Imports external knowledge as is-a or part-of relationships.
+     * Accepts a list of triples: [type, source, target].
+     * type = "is-a" or "part-of"
+     */
+    public void importExternalKnowledge(List<String[]> triples) {
+        for (String[] triple : triples) {
+            if (triple.length != 3) continue;
+            String type = triple[0];
+            String source = triple[1];
+            String target = triple[2];
+            if (type.equals("is-a")) addIsARelationship(source, target);
+            if (type.equals("part-of")) addPartOfRelationship(source, target);
         }
     }
 }

@@ -20,6 +20,12 @@ public class SemanticNode {
     private List<ConceptRelation> conceptualRelations; // Higher-level relations this node is involved in
     private List<TemporalInfo> temporalInfos = new ArrayList<>();
 
+    // Conceptual hierarchy and part-of relationships
+    private List<SemanticNode> parents = new ArrayList<>();
+    private List<SemanticNode> children = new ArrayList<>();
+    private List<SemanticNode> parts = new ArrayList<>();
+    private List<SemanticNode> wholes = new ArrayList<>();
+
     /**
      * Constructor for a SemanticNode.
      * @param name The name (word/concept) of the node.
@@ -130,6 +136,15 @@ public class SemanticNode {
             this.conceptualRelations.add(relation);
         }
     }
+
+    public void addParent(SemanticNode parent) { if (parent != null && !parents.contains(parent)) parents.add(parent); }
+    public void addChild(SemanticNode child) { if (child != null && !children.contains(child)) children.add(child); }
+    public void addPart(SemanticNode part) { if (part != null && !parts.contains(part)) parts.add(part); }
+    public void addWhole(SemanticNode whole) { if (whole != null && !wholes.contains(whole)) wholes.add(whole); }
+    public List<SemanticNode> getParents() { return parents; }
+    public List<SemanticNode> getChildren() { return children; }
+    public List<SemanticNode> getParts() { return parts; }
+    public List<SemanticNode> getWholes() { return wholes; }
 
     @Override
     public boolean equals(Object o) {
