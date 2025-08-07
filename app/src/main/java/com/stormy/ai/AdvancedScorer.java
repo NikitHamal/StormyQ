@@ -220,4 +220,46 @@ public class AdvancedScorer {
         if (score < 0.0) score = 0.0;
         return score;
     }
+
+    /**
+     * Result structure for advanced confidence calibration and uncertainty management.
+     */
+    public static class ConfidenceResult {
+        public final double confidence;
+        public final String explanation;
+        public final double temporal;
+        public final double sentiment;
+        public final double semantic;
+        public final double completeness;
+        public final double negation;
+        public ConfidenceResult(double confidence, String explanation, double temporal, double sentiment, double semantic, double completeness, double negation) {
+            this.confidence = confidence;
+            this.explanation = explanation;
+            this.temporal = temporal;
+            this.sentiment = sentiment;
+            this.semantic = semantic;
+            this.completeness = completeness;
+            this.negation = negation;
+        }
+    }
+
+    /**
+     * Aggregates confidence from all scoring modules and provides an explanation.
+     */
+    public ConfidenceResult calculateOverallConfidence(AnswerCandidate candidate, String question, SemanticNetwork semanticNetwork) {
+        double temporal = calculateTemporalScore(candidate, question);
+        double sentiment = calculateSentimentScore(candidate, question);
+        double semantic = calculateSemanticProximity(candidate, question, semanticNetwork);
+        double completeness = calculateCompleteness(candidate, question, semanticNetwork);
+        double negation = calculateNegationScore(candidate, question);
+        // Weighted aggregation (weights can be tuned)
+        double confidence = 0.25 * temporal + 0.2 * sentiment + 0.25 * semantic + 0.2 * completeness + 0.1 * negation;
+        StringBuilder explanation = new StringBuilder();
+        explanation.append("Temporal: ").append(String.format("%.2f", temporal)).append(", ");
+        explanation.append("Sentiment: ").append(String.format("%.2f", sentiment)).append(", ");
+        explanation.append("Semantic: ").append(String.format("%.2f", semantic)).append(", ");
+        explanation.append("Completeness: ").append(String.format("%.2f", completeness)).append(", ");
+        explanation.append("Negation: ").append(String.format("%.2f", negation));
+        return new ConfidenceResult(confidence, explanation.toString(), temporal, sentiment, semantic, completeness, negation);
+    }
 }
