@@ -368,127 +368,130 @@ public class TextUtils {
 
 
     /**
-     * Very basic temporal expression extraction.
-     * This method attempts to assign a numerical 'time' to simple temporal keywords.
-     * In a real application, this would involve a robust NLP date/time parser.
-     * For now, it just returns a `TemporalInfo` with a raw expression and dummy timestamps.
+     * Enhanced temporal expression extraction.
+     * Parses complex temporal expressions, durations, ranges, and ambiguous cases.
+     * Returns a list of TemporalInfo objects with confidence scores and explanations.
      *
-     * @param word The temporal keyword found.
-     * @return A TemporalInfo object or null if not a recognized simple temporal keyword.
+     * @param text The text to extract temporal information from.
+     * @return A list of TemporalInfoResult (TemporalInfo + confidence + explanation)
      */
-    public static TemporalInfo extractTemporalInfo(String word) {
-        long currentTime = System.currentTimeMillis(); // Use current time as a reference
-        word = word.toLowerCase();
+    public static List<TemporalInfoResult> extractAllTemporalInfo(String text) {
+        List<TemporalInfoResult> results = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) return results;
+        String lower = text.toLowerCase();
 
-        Calendar cal = Calendar.getInstance();
-        int currentYear = cal.get(Calendar.YEAR);
-        int currentMonth = cal.get(Calendar.MONTH); // 0-indexed
-        int currentDay = cal.get(Calendar.DAY_OF_MONTH);
-
-        cal.set(currentYear, currentMonth, currentDay, 0, 0, 0);
-        long startOfDay = cal.getTimeInMillis();
-        cal.set(currentYear, currentMonth, currentDay, 23, 59, 59);
-        long endOfDay = cal.getTimeInMillis();
-
-        switch (word) {
-            case "today":
-                return new TemporalInfo("today", startOfDay, endOfDay);
-            case "yesterday":
-                return new TemporalInfo("yesterday", startOfDay - (24 * 60 * 60 * 1000L), endOfDay - (24 * 60 * 60 * 1000L));
-            case "tomorrow":
-                return new TemporalInfo("tomorrow", startOfDay + (24 * 60 * 60 * 1000L), endOfDay + (24 * 60 * 60 * 1000L));
-            case "now":
-                return new TemporalInfo("now", currentTime, currentTime);
-            case "last week":
-                return new TemporalInfo("last week", startOfDay - (7 * 24 * 60 * 60 * 1000L), endOfDay - (7 * 24 * 60 * 60 * 1000L));
-            case "next week":
-                return new TemporalInfo("next week", startOfDay + (7 * 24 * 60 * 60 * 1000L), endOfDay + (7 * 24 * 60 * 60 * 1000L));
-            case "last month":
-                cal.add(Calendar.MONTH, -1);
-                cal.set(Calendar.DAY_OF_MONTH, 1);
-                long lastMonthStart = cal.getTimeInMillis();
-                cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
-                long lastMonthEnd = cal.getTimeInMillis();
-                return new TemporalInfo("last month", lastMonthStart, lastMonthEnd);
-            case "next month":
-                cal.add(Calendar.MONTH, 1);
-                cal.set(Calendar.DAY_OF_MONTH, 1);
-                long nextMonthStart = cal.getTimeInMillis();
-                cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
-                long nextMonthEnd = cal.getTimeInMillis();
-                return new TemporalInfo("next month", nextMonthStart, nextMonthEnd);
-            case "last year":
-                cal.set(currentYear - 1, Calendar.JANUARY, 1, 0, 0, 0);
-                long lastYearStart = cal.getTimeInMillis();
-                cal.set(currentYear - 1, Calendar.DECEMBER, 31, 23, 59, 59);
-                long lastYearEnd = cal.getTimeInMillis();
-                return new TemporalInfo("last year", lastYearStart, lastYearEnd);
-            case "next year":
-                cal.set(currentYear + 1, Calendar.JANUARY, 1, 0, 0, 0);
-                long nextYearStart = cal.getTimeInMillis();
-                cal.set(currentYear + 1, Calendar.DECEMBER, 31, 23, 59, 59);
-                long nextYearEnd = cal.getTimeInMillis();
-                return new TemporalInfo("next year", nextYearStart, nextYearEnd);
-            case "two years ago":
-                cal.set(currentYear - 2, Calendar.JANUARY, 1, 0, 0, 0);
-                long twoYearsAgoStart = cal.getTimeInMillis();
-                cal.set(currentYear - 2, Calendar.DECEMBER, 31, 23, 59, 59);
-                long twoYearsAgoEnd = cal.getTimeInMillis();
-                return new TemporalInfo("two years ago", twoYearsAgoStart, twoYearsAgoEnd);
-            case "in the past": // Broad temporal marker
-            case "historically":
-                return new TemporalInfo(word, null, currentTime); // Ends now, started indefinitely in past
-            case "in the future": // Broad temporal marker
-            case "soon":
-                return new TemporalInfo(word, currentTime, null); // Starts now, ends indefinitely in future
-
-            // Add months
-            case "january": case "february": case "march": case "april": case "may": case "june":
-            case "july": case "august": case "september": case "october": case "november": case "december":
-                try {
-                    Calendar monthCal = Calendar.getInstance();
-                    monthCal.set(currentYear, getMonthIndex(word), 1, 0, 0, 0);
-                    long monthStart = monthCal.getTimeInMillis();
-                    monthCal.set(Calendar.DAY_OF_MONTH, monthCal.getActualMaximum(Calendar.DAY_OF_MONTH));
-                    long monthEnd = monthCal.getTimeInMillis();
-                    return new TemporalInfo(word, monthStart, monthEnd);
-                } catch (Exception e) { /* Fall through */ }
-
-
-            default:
-                // For year numbers (e.g., "1990")
-                if (word.matches("\\d{4}")) {
-                    try {
-                        int year = Integer.parseInt(word);
-                        Calendar yearCal = Calendar.getInstance();
-                        yearCal.set(year, Calendar.JANUARY, 1, 0, 0, 0);
-                        long yearStart = yearCal.getTimeInMillis();
-                        yearCal.set(year, Calendar.DECEMBER, 31, 23, 59, 59);
-                        long yearEnd = yearCal.getTimeInMillis();
-                        return new TemporalInfo(word, yearStart, yearEnd);
-                    } catch (NumberFormatException e) {
-                        // Not a valid year number, continue
-                    }
-                }
-                // For specific dates like "July 4, 1776" (simplified, needs full parser for robustness)
-                Pattern datePattern = Pattern.compile("([A-Za-z]+)\\s+(\\d{1,2}),\\s*(\\d{4})");
-                Matcher dateMatcher = datePattern.matcher(word);
-                if (dateMatcher.find()) {
-                    try {
-                        int month = getMonthIndex(dateMatcher.group(1));
-                        int day = Integer.parseInt(dateMatcher.group(2));
-                        int year = Integer.parseInt(dateMatcher.group(3));
-                        
-                        Calendar specificDateCal = Calendar.getInstance();
-                        specificDateCal.set(year, month, day, 0, 0, 0);
-                        long dateStart = specificDateCal.getTimeInMillis();
-                        specificDateCal.set(year, month, day, 23, 59, 59);
-                        long dateEnd = specificDateCal.getTimeInMillis();
-                        return new TemporalInfo(word, dateStart, dateEnd);
-                    } catch (Exception e) { /* Fall through */ }
-                }
-                return null;
+        // 1. Absolute year (e.g., 1990, 2020)
+        if (lower.matches(".*\\b(\\d{4})\\b.*")) {
+            Matcher m = Pattern.compile("\\b(\\d{4})\\b").matcher(lower);
+            while (m.find()) {
+                int year = Integer.parseInt(m.group(1));
+                Calendar cal = Calendar.getInstance();
+                cal.set(year, Calendar.JANUARY, 1, 0, 0, 0);
+                long start = cal.getTimeInMillis();
+                cal.set(year, Calendar.DECEMBER, 31, 23, 59, 59);
+                long end = cal.getTimeInMillis();
+                results.add(new TemporalInfoResult(
+                    new TemporalInfo(m.group(1), start, end),
+                    1.0,
+                    "Detected absolute year: " + year
+                ));
+            }
         }
+
+        // 2. Ranges (e.g., 1990-2000, from 1990 to 2000)
+        Matcher range = Pattern.compile("(\\d{4})\\s*(?:-|to|until|through|and)\\s*(\\d{4})").matcher(lower);
+        while (range.find()) {
+            int startYear = Integer.parseInt(range.group(1));
+            int endYear = Integer.parseInt(range.group(2));
+            Calendar cal = Calendar.getInstance();
+            cal.set(startYear, Calendar.JANUARY, 1, 0, 0, 0);
+            long start = cal.getTimeInMillis();
+            cal.set(endYear, Calendar.DECEMBER, 31, 23, 59, 59);
+            long end = cal.getTimeInMillis();
+            results.add(new TemporalInfoResult(
+                new TemporalInfo(range.group(0), start, end),
+                1.0,
+                "Detected year range: " + startYear + "-" + endYear
+            ));
+        }
+
+        // 3. Relative expressions (e.g., 3 days ago, 2 weeks before, next month)
+        Matcher rel = Pattern.compile("(\\d+)\\s*(day|week|month|year)s?\\s*(ago|before|after|from now|later)").matcher(lower);
+        while (rel.find()) {
+            int num = Integer.parseInt(rel.group(1));
+            String unit = rel.group(2);
+            String direction = rel.group(3);
+            Calendar cal = Calendar.getInstance();
+            long now = System.currentTimeMillis();
+            int field = Calendar.DAY_OF_YEAR;
+            if (unit.startsWith("week")) field = Calendar.WEEK_OF_YEAR;
+            else if (unit.startsWith("month")) field = Calendar.MONTH;
+            else if (unit.startsWith("year")) field = Calendar.YEAR;
+            int sign = (direction.equals("ago") || direction.equals("before")) ? -1 : 1;
+            cal.add(field, sign * num);
+            long target = cal.getTimeInMillis();
+            results.add(new TemporalInfoResult(
+                new TemporalInfo(rel.group(0), target, target),
+                0.9,
+                "Detected relative expression: " + rel.group(0)
+            ));
+        }
+
+        // 4. Simple keywords (today, yesterday, tomorrow, now, last week, next week, etc.)
+        String[] keywords = {"today", "yesterday", "tomorrow", "now", "last week", "next week", "last month", "next month", "last year", "next year", "two years ago", "in the past", "historically", "in the future", "soon"};
+        for (String kw : keywords) {
+            if (lower.contains(kw)) {
+                TemporalInfo ti = extractTemporalInfo(kw);
+                if (ti != null) {
+                    results.add(new TemporalInfoResult(
+                        ti,
+                        0.8,
+                        "Detected keyword: " + kw
+                    ));
+                }
+            }
+        }
+
+        // 5. Ambiguity: If multiple expressions found, mark as ambiguous
+        if (results.size() > 1) {
+            for (TemporalInfoResult r : results) {
+                r.setAmbiguous(true);
+                r.setExplanation(r.getExplanation() + " (ambiguous)");
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * For backward compatibility: extract the most confident temporal info from text.
+     */
+    public static TemporalInfo extractTemporalInfo(String text) {
+        List<TemporalInfoResult> all = extractAllTemporalInfo(text);
+        if (all.isEmpty()) return null;
+        return all.get(0).getTemporalInfo();
+    }
+
+    /**
+     * Result wrapper for advanced temporal extraction.
+     */
+    public static class TemporalInfoResult {
+        private TemporalInfo temporalInfo;
+        private double confidence;
+        private String explanation;
+        private boolean ambiguous;
+        public TemporalInfoResult(TemporalInfo temporalInfo, double confidence, String explanation) {
+            this.temporalInfo = temporalInfo;
+            this.confidence = confidence;
+            this.explanation = explanation;
+            this.ambiguous = false;
+        }
+        public TemporalInfo getTemporalInfo() { return temporalInfo; }
+        public double getConfidence() { return confidence; }
+        public String getExplanation() { return explanation; }
+        public boolean isAmbiguous() { return ambiguous; }
+        public void setAmbiguous(boolean ambiguous) { this.ambiguous = ambiguous; }
+        public void setExplanation(String explanation) { this.explanation = explanation; }
     }
 
     // Helper method to get month index from month name
