@@ -78,5 +78,5 @@ dependencies {
 	implementation 'org.apache.lucene:lucene-analyzers-common:7.7.3'
 	
 	// SimMetrics for advanced string similarity (lightweight)
-	implementation 'org.simmetrics:simmetrics-core:4.1.1'
+	implementation 'org.simmetrics:simmetrics-core:3.2.2'
 }
