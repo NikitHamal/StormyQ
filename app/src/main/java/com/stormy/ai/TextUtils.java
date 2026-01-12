@@ -58,7 +58,7 @@ public class TextUtils {
     }
 
     public static String[] splitSentences(String text) {
-        return text.split("(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s+");
+        return text.split("(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s+");
     }
 
     public static boolean isPotentialAnswer(String text) {

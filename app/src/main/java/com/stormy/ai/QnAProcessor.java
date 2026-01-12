@@ -72,7 +72,7 @@ public class QnAProcessor {
 
     public AnswerResult findAnswer(String context, String question) {
         reasoningSummary.setLength(0);
-        reasoningSummary.append("--- Reasoning Summary ---");
+        reasoningSummary.append("--- Reasoning Summary ---\n");
 
         if (!isNetworkBuilt || !context.equals(lastContext)) {
             rebuildNetwork(context);

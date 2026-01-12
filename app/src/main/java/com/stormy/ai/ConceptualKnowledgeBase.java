@@ -29,8 +29,7 @@ public class ConceptualKnowledgeBase {
     }
 
     public void integrateIntoNetwork(SemanticNetwork network) {
-        reasoning.append("\n--- Integrating Conceptual Knowledge ---\
-");
+        reasoning.append("\n--- Integrating Conceptual Knowledge ---\n");
         for (ConceptRelation rel : relations) {
             SemanticNode source = network.getNode(rel.getSourceConcept());
             SemanticNode target = network.getNode(rel.getTargetConcept());
