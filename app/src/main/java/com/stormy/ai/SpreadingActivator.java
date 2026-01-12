@@ -3,313 +3,117 @@ package com.stormy.ai;
 import com.stormy.ai.models.ConceptRelation;
 import com.stormy.ai.models.SemanticEdge;
 import com.stormy.ai.models.SemanticNode;
-import com.stormy.ai.models.TemporalInfo; // Added import
+import com.stormy.ai.models.TemporalInfo;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
-import java.util.Set; // For initial activators
 
 /**
- * Implements the spreading activation algorithm over a given SemanticNetwork.
- * It manages activation propagation, decay, and applies various boosts/penalties
- * based on contextual factors like negation and sentiment.
+ * Optimized spreading activation implementation.
  */
 public class SpreadingActivator {
 
-    private SemanticNetwork semanticNetwork;
-    private StringBuilder reasoningSummary; // For logging the activation process
+    private final SemanticNetwork network;
+    private final StringBuilder reasoning;
 
-    // Parameters for spreading activation (can be made adaptive/configurable)
     private double initialActivation;
     private double activationThreshold;
-    private int maxSpreadingIterations;
+    private int maxIterations;
     private double negationEffect;
-    private double conceptRelationBoost;
-    private double sentimentBoostFactor;
+    private double conceptBoost;
+    private double sentimentBoost;
 
-    /**
-     * Constructs a SpreadingActivator.
-     * @param semanticNetwork The semantic network to perform activation on.
-     * @param reasoningSummary A StringBuilder to append reasoning logs.
-     * @param initialActivation Initial activation value for query keywords.
-     * @param activationThreshold Minimum activation to spread.
-     * @param maxSpreadingIterations Maximum iterations for activation spread.
-     * @param negationEffect Factor to reduce activation due to negation.
-     * @param conceptRelationBoost Boost for activation via conceptual relations.
-     * @param sentimentBoostFactor Boost for matching sentiment.
-     */
-    public SpreadingActivator(SemanticNetwork semanticNetwork, StringBuilder reasoningSummary,
-                              double initialActivation, double activationThreshold, int maxSpreadingIterations,
-                              double negationEffect, double conceptRelationBoost, double sentimentBoostFactor) {
-        this.semanticNetwork = semanticNetwork;
-        this.reasoningSummary = reasoningSummary;
+    public SpreadingActivator(SemanticNetwork network, StringBuilder reasoning,
+                              double initialActivation, double threshold, int maxIterations,
+                              double negationEffect, double conceptBoost, double sentimentBoost) {
+        this.network = network;
+        this.reasoning = reasoning;
         this.initialActivation = initialActivation;
-        this.activationThreshold = activationThreshold;
-        this.maxSpreadingIterations = maxSpreadingIterations;
+        this.activationThreshold = threshold;
+        this.maxIterations = maxIterations;
         this.negationEffect = negationEffect;
-        this.conceptRelationBoost = conceptRelationBoost;
-        this.sentimentBoostFactor = sentimentBoostFactor;
+        this.conceptBoost = conceptBoost;
+        this.sentimentBoost = sentimentBoost;
     }
 
-    /**
-     * Performs spreading activation from initial query keywords.
-     * Activation spreads through the network, decreasing with distance and decay.
-     * Negation reduces activation. Conceptual relations also influence spread.
-     * @param initialActivators A list of stemmed words to initially activate.
-     * @param questionSentiment The sentiment score of the question.
-     */
-    public void activate(List<String> initialActivators, int questionSentiment) {
-        semanticNetwork.resetActivations(); // Reset all node activations before a new run
-        reasoningSummary.append("\n--- Spreading Activation Process ---\n");
-        reasoningSummary.append("Initial Activators: ").append(initialActivators).append("\n");
-        reasoningSummary.append("Question Sentiment: ").append(questionSentiment).append("\n");
+    public void activate(List<String> seeds, int qSentiment) {
+        network.resetActivations();
+        Queue<SemanticNode> queue = new LinkedList<>();
 
-        Queue<SemanticNode> activationQueue = new LinkedList<>();
-
-        // Extract temporal information from initial activators (assuming question context for now)
-        TemporalInfo queryTemporalInfo = null;
-        for (String activator : initialActivators) {
-            TemporalInfo temp = TextUtils.extractTemporalInfo(activator);
-            if (temp != null) {
-                queryTemporalInfo = temp;
-                reasoningSummary.append("Query Temporal Info Detected (from initial activators): ").append(temp.getRawTemporalExpression()).append("\n");
-                break;
-            }
-        }
-
-
-        // Initialize activation for query keywords
-        for (String activator : initialActivators) {
-            SemanticNode node = semanticNetwork.getNode(activator);
+        for (String seed : seeds) {
+            SemanticNode node = network.getNode(seed);
             if (node != null) {
-                // If the initial activator itself is in a negated context, its initial activation might be lower
                 node.setActivation(initialActivation * (node.isNegated() ? (1.0 - negationEffect) : 1.0));
-                node.setActivatedThisCycle(true); // Mark as activated in this cycle
-                activationQueue.offer(node);
-                reasoningSummary.append(" - Activated '").append(node.getName()).append("' with initial score: ")
-                                .append(String.format("%.2f", node.getActivation())).append("\n");
+                node.setActivatedThisCycle(true);
+                queue.offer(node);
             }
         }
 
-        int iterations = 0;
-        while (!activationQueue.isEmpty() && iterations < maxSpreadingIterations) {
-            int currentQueueSize = activationQueue.size();
-            List<SemanticNode> nextCycleActivations = new ArrayList<>(); // Nodes to process in next iteration
-            reasoningSummary.append("\n  --- Iteration ").append(iterations + 1).append(" ---\n");
+        int iter = 0;
+        while (!queue.isEmpty() && iter < maxIterations) {
+            int levelSize = queue.size();
+            List<SemanticNode> nextLevel = new ArrayList<>();
 
-            for (int i = 0; i < currentQueueSize; i++) {
-                SemanticNode currentNode = activationQueue.poll();
+            for (int i = 0; i < levelSize; i++) {
+                SemanticNode current = queue.poll();
+                if (current == null || current.getActivation() < activationThreshold) continue;
 
-                if (currentNode == null || currentNode.getActivation() < activationThreshold) {
-                    continue; // Skip if node is null or activation is too low
-                }
-
-                reasoningSummary.append("    Spreading from '").append(currentNode.getName())
-                                .append("' (Activation: ").append(String.format("%.2f", currentNode.getActivation())).append("):\n");
-
-                // Apply decay to the current node *after* it has spread its activation
-                currentNode.applyDecay();
-
-                // Spread activation to neighbors via co-occurrence edges
-                List<SemanticEdge> edges = semanticNetwork.getEdgesFromNode(currentNode);
-                if (edges != null) {
-                    for (SemanticEdge edge : edges) {
-                        SemanticNode targetNode = edge.getTarget();
-                        double activationToSpread = currentNode.getActivation() * edge.getWeight();
-
-                        // Apply negation effect if the target node or the edge implies negation
-                        if (targetNode.isNegated()) { // Node is explicitly marked as negated
-                             activationToSpread *= (1.0 - negationEffect);
-                             reasoningSummary.append("      -> Negation effect applied to '").append(targetNode.getName()).append("'\n");
-                        } else if (edge.getWeight() < 0.5 * (1.0 - negationEffect)) { // Heuristic: very low edge weight due to strong negation on connection
-                             activationToSpread *= (1.0 - negationEffect * 0.5); // Less severe than direct node negation
-                             reasoningSummary.append("      -> Indirect negation effect applied to '").append(targetNode.getName()).append("'\n");
-                        }
-
-                        // Apply sentiment boost/penalty for target node
-                        int targetNodeSentiment = TextUtils.getSentimentScore(targetNode.getName());
-                        if (questionSentiment != 0 && targetNodeSentiment != 0) {
-                            if ((questionSentiment > 0 && targetNodeSentiment > 0) || (questionSentiment < 0 && targetNodeSentiment < 0)) {
-                                activationToSpread *= (1.0 + sentimentBoostFactor); // Boost if sentiment matches
-                                reasoningSummary.append("      -> Sentiment Match Boost for '").append(targetNode.getName()).append("'\n");
-                            } else {
-                                activationToSpread *= (1.0 - sentimentBoostFactor); // Penalty if sentiment mismatches
-                                reasoningSummary.append("      -> Sentiment Mismatch Penalty for '").append(targetNode.getName()).append("'\n");
-                            }
-                        }
-
-                        // Temporal relevance boost for target node
-                        if (queryTemporalInfo != null && targetNode.getTemporalInfo() != null) {
-                            if (doTimeRangesOverlap(queryTemporalInfo, targetNode.getTemporalInfo())) {
-                                activationToSpread *= (1.0 + conceptRelationBoost * 0.5); // Use a portion of conceptual boost
-                                reasoningSummary.append("      -> Temporal Match/Overlap Boost for '").append(targetNode.getName()).append("'\n");
-                            }
-                        }
-
-
-                        if (activationToSpread >= activationThreshold) {
-                            double oldActivation = targetNode.getActivation();
-                            targetNode.increaseActivation(activationToSpread);
-
-                            // Only add to next cycle if activation significantly increased and not processed yet
-                            if (targetNode.getActivation() > oldActivation + activationThreshold / 2 && !targetNode.isActivatedThisCycle()) {
-                                nextCycleActivations.add(targetNode);
-                                targetNode.setActivatedThisCycle(true); // Mark for current cycle
-                                reasoningSummary.append("      -> Activated '").append(targetNode.getName())
-                                                .append("' via co-occurrence (new act: ").append(String.format("%.2f", targetNode.getActivation())).append(")\n");
-                            }
-                        }
-                    }
-                }
-
-                // Spread activation via conceptual relations associated with the current node
-                for (ConceptRelation relation : currentNode.getConceptualRelations()) {
-                    SemanticNode relatedNode = null;
-                    // Check if current node is the source of the relation
-                    if (relation.getSourceConcept().equals(currentNode.getName())) {
-                        relatedNode = semanticNetwork.getNode(relation.getTargetConcept());
-                    }
-                    // Check if current node is the target of the relation (for reciprocal reasoning)
-                    else if (relation.getTargetConcept().equals(currentNode.getName())) {
-                        relatedNode = semanticNetwork.getNode(relation.getSourceConcept());
-                    }
-
-                    if (relatedNode != null && !relatedNode.equals(currentNode)) {
-                        // Use relation strength to determine activation from relation
-                        double activationFromRelation = currentNode.getActivation() * relation.getStrength() * conceptRelationBoost;
-
-                        // Apply sentiment boost/penalty for related node
-                        int relatedNodeSentiment = TextUtils.getSentimentScore(relatedNode.getName());
-                        if (questionSentiment != 0 && relatedNodeSentiment != 0) {
-                            if ((questionSentiment > 0 && relatedNodeSentiment > 0) || (questionSentiment < 0 && relatedNodeSentiment < 0)) {
-                                activationFromRelation *= (1.0 + sentimentBoostFactor);
-                                reasoningSummary.append("      -> Sentiment Match Boost for '").append(relatedNode.getName()).append("'\n");
-                            } else {
-                                activationFromRelation *= (1.0 - sentimentBoostFactor);
-                                reasoningSummary.append("      -> Sentiment Mismatch Penalty for '").append(relatedNode.getName()).append("'\n");
-                            }
-                        }
-
-                        // Temporal relevance boost for related node
-                        if (queryTemporalInfo != null && relatedNode.getTemporalInfo() != null) {
-                            if (doTimeRangesOverlap(queryTemporalInfo, relatedNode.getTemporalInfo())) {
-                                activationFromRelation *= (1.0 + conceptRelationBoost * 0.5);
-                                reasoningSummary.append("      -> Temporal Match/Overlap Boost for '").append(relatedNode.getName()).append("'\n");
-                            }
-                        }
-
-                        if (activationFromRelation >= activationThreshold) {
-                            double oldActivation = relatedNode.getActivation();
-                            relatedNode.increaseActivation(activationFromRelation);
-                             if (relatedNode.getActivation() > oldActivation + activationThreshold / 2 && !relatedNode.isActivatedThisCycle()) {
-                                nextCycleActivations.add(relatedNode);
-                                relatedNode.setActivatedThisCycle(true);
-                                reasoningSummary.append("      -> Activated '").append(relatedNode.getName())
-                                                .append("' via ").append(relation.getType().name()).append(" relation (new act: ")
-                                                .append(String.format("%.2f", relatedNode.getActivation())).append(")\n");
-                            }
-                        }
-                    }
-                }
-            }
-            // Add nodes activated in this cycle to the queue for the next iteration
-            for (SemanticNode node : nextCycleActivations) {
-                activationQueue.offer(node);
+                current.applyDecay();
+                spreadToNeighbors(current, nextLevel, qSentiment);
+                spreadViaRelations(current, nextLevel, qSentiment);
             }
 
-            iterations++;
-            // Reset activatedThisCycle for nodes that were processed in this iteration so they can be re-activated
-            // in subsequent iterations if their activation is sufficiently boosted again.
-            for (SemanticNode node : semanticNetwork.getAllNodes()) { // Iterate through all nodes to reset flags
-                node.setActivatedThisCycle(false);
+            for (SemanticNode n : nextLevel) {
+                n.setActivatedThisCycle(true);
+                queue.offer(n);
+            }
+            
+            // Reset flags for next iteration
+            for (SemanticNode n : network.getAllNodes()) n.setActivatedThisCycle(false);
+            iter++;
+        }
+    }
+
+    private void spreadToNeighbors(SemanticNode source, List<SemanticNode> next, int qSentiment) {
+        List<SemanticEdge> edges = network.getEdgesFromNode(source);
+        if (edges == null) return;
+
+        for (SemanticEdge edge : edges) {
+            SemanticNode target = edge.getTarget();
+            double amount = source.getActivation() * edge.getWeight();
+
+            if (target.isNegated()) amount *= (1.0 - negationEffect);
+            
+            int tSentiment = TextUtils.getSentimentScore(target.getName());
+            if (qSentiment != 0 && tSentiment != 0) {
+                if (Integer.signum(qSentiment) == Integer.signum(tSentiment)) amount *= (1.0 + sentimentBoost);
+                else amount *= (1.0 - sentimentBoost);
+            }
+
+            if (amount >= activationThreshold) {
+                target.increaseActivation(amount);
+                if (!target.isActivatedThisCycle()) next.add(target);
             }
         }
-
-        // Log final activated nodes for summary
-        reasoningSummary.append("\n--- Top Activated Nodes After Spreading Activation ---\n");
-        semanticNetwork.getAllNodes().stream()
-             .filter(node -> node.getActivation() >= activationThreshold)
-             .sorted(java.util.Comparator.comparing(SemanticNode::getActivation).reversed())
-             .limit(10)
-             .forEach(node -> reasoningSummary.append(" - ").append(node.getName())
-                                              .append(": ").append(String.format("%.2f", node.getActivation()))
-                                              .append(node.isNegated() ? " (Negated)" : "")
-                                              .append(node.getTemporalInfo() != null ? " (Temporal: " + node.getTemporalInfo().getRawTemporalExpression() + ")" : "")
-                                              .append("\n"));
     }
 
-    /**
-     * Helper method to check if two temporal ranges overlap.
-     * @param info1 First TemporalInfo object.
-     * @param info2 Second TemporalInfo object.
-     * @return True if they overlap, false otherwise.
-     */
-    private boolean doTimeRangesOverlap(TemporalInfo info1, TemporalInfo info2) {
-        if (info1.getStartTimeMillis() == null || info1.getEndTimeMillis() == null ||
-            info2.getStartTimeMillis() == null || info2.getEndTimeMillis() == null) {
-            return false; // Cannot determine overlap if times are null
+    private void spreadViaRelations(SemanticNode source, List<SemanticNode> next, int qSentiment) {
+        for (ConceptRelation rel : source.getConceptualRelations()) {
+            String targetName = rel.getSourceConcept().equals(source.getName()) ? rel.getTargetConcept() : rel.getSourceConcept();
+            SemanticNode target = network.getNode(targetName);
+            
+            if (target != null && !target.equals(source)) {
+                double amount = source.getActivation() * rel.getStrength() * conceptBoost;
+                
+                if (amount >= activationThreshold) {
+                    target.increaseActivation(amount);
+                    if (!target.isActivatedThisCycle()) next.add(target);
+                }
+            }
         }
-
-        long start1 = info1.getStartTimeMillis();
-        long end1 = info1.getEndTimeMillis();
-        long start2 = info2.getStartTimeMillis();
-        long end2 = info2.getEndTimeMillis();
-
-        // Check for overlap: (Start1 <= End2) AND (Start2 <= End1)
-        return start1 <= end2 && start2 <= end1;
     }
 
-
-    // --- Getters and Setters for parameters (if adjustable from outside) ---
-    public double getInitialActivation() {
-        return initialActivation;
-    }
-
-    public void setInitialActivation(double initialActivation) {
-        this.initialActivation = initialActivation;
-    }
-
-    public double getActivationThreshold() {
-        return activationThreshold;
-    }
-
-    public void setActivationThreshold(double activationThreshold) {
-        this.activationThreshold = activationThreshold;
-    }
-
-    public int getMaxSpreadingIterations() {
-        return maxSpreadingIterations;
-    }
-
-    public void setMaxSpreadingIterations(int maxSpreadingIterations) {
-        // Corrected typo here:
-        this.maxSpreadingIterations = maxSpreadingIterations;
-    }
-
-    public double getNegationEffect() {
-        return negationEffect;
-    }
-
-    public void setNegationEffect(double negationEffect) {
-        this.negationEffect = negationEffect;
-    }
-
-    public double getConceptRelationBoost() {
-        return conceptRelationBoost;
-    }
-
-    public void setConceptRelationBoost(double conceptRelationBoost) {
-        this.conceptRelationBoost = conceptRelationBoost;
-    }
-
-    public double getSentimentBoostFactor() {
-        return sentimentBoostFactor;
-    }
-
-    public void setSentimentBoostFactor(double sentimentBoostFactor) {
-        this.sentimentBoostFactor = sentimentBoostFactor;
-    }
+    public void setActivationThreshold(double threshold) { this.activationThreshold = threshold; }
 }
