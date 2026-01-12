@@ -1,17 +1,15 @@
 package com.stormy.ai.models;
 
 import java.util.HashSet;
+import java.io.Serializable;
 import java.util.Set;
 
 /**
- * Represents a probabilistic rule in the QnA system.
- * A rule consists of a set of conditions (keywords) and a consequence (another keyword)
- * along with a confidence score for the rule's validity.
- * When the conditions are met in the activated semantic network, the consequence
- * can be inferred with this rule's confidence.
+ * Represents a probabilistic rule.
  */
-public class Rule {
-    private Set<String> conditions; // Stemmed keywords that must be activated for the rule to apply
+public class Rule implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private Set<String> conditions;
     private String consequence;     // The stemmed keyword that is inferred if conditions are met
     private double confidence;      // The probability or confidence in this rule (0.0 to 1.0)
     private String description;     // A human-readable description of the rule

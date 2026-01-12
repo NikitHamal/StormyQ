@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize processors
         qnaProcessor = QnAProcessor.getInstance();
+        qnaProcessor.initialize(this);
         textHighlighter = new TextHighlighter();
 
         // Set up listeners

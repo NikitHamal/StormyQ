@@ -1,75 +1,44 @@
 package com.stormy.ai.models;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects; // For Objects.hash and Objects.equals
+import java.util.Objects;
 
 /**
- * Represents a node in the semantic network. Each node corresponds to a unique word or concept.
- * It stores an activation level, which changes during the spreading activation process.
- * Enhanced to include temporal information, a flag for negation context,
- * and a list of conceptual relations this node participates in.
+ * Enhanced SemanticNode with serialization and syntactic roles.
  */
-public class SemanticNode {
-    private String name; // The word/concept this node represents (e.g., "cat", "run", "animal")
-    private double activation; // The current activation level of this node
-    private double decayRate; // Rate at which activation decays per iteration
-    private boolean activatedThisCycle; // Flag to prevent re-activating in the same cycle of spreading activation
-    private TemporalInfo temporalInfo; // Temporal information associated with this node (e.g., "in 1990")
-    private boolean isNegated; // Flag indicating if this node is in a negated context (e.g., "NOT good")
-    private List<ConceptRelation> conceptualRelations; // Higher-level relations this node is involved in
+public class SemanticNode implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
+    private final String name;
+    private transient double activation; 
+    private double decayRate;
+    private transient boolean activatedThisCycle;
+    private TemporalInfo temporalInfo;
+    private boolean isNegated;
+    private final List<ConceptRelation> conceptualRelations;
+    private String primaryRole; // Syntactic role: SUBJECT, VERB, OBJECT, etc.
 
-    /**
-     * Constructor for a SemanticNode.
-     * @param name The name (word/concept) of the node.
-     * @param decayRate The rate at which the node's activation decays per step.
-     */
     public SemanticNode(String name, double decayRate) {
         this.name = name;
         this.activation = 0.0;
-        this.decayRate = decayRate; // Initialize with the network's decay rate
-        this.activatedThisCycle = false;
-        this.isNegated = false; // Default to not negated
-        this.conceptualRelations = new ArrayList<>(); // Initialize empty list
+        this.decayRate = decayRate;
+        this.conceptualRelations = new ArrayList<>();
     }
 
-    // --- Getters ---
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public double getActivation() { return activation; }
+    public TemporalInfo getTemporalInfo() { return temporalInfo; }
+    public boolean isNegated() { return isNegated; }
+    public List<ConceptRelation> getConceptualRelations() { return new ArrayList<>(conceptualRelations); }
+    public String getPrimaryRole() { return primaryRole; }
 
-    public double getActivation() {
-        return activation;
-    }
-
-    public boolean isActivatedThisCycle() {
-        return activatedThisCycle;
-    }
-
-    public TemporalInfo getTemporalInfo() {
-        return temporalInfo;
-    }
-
-    public boolean isNegated() {
-        return isNegated;
-    }
-
-    public List<ConceptRelation> getConceptualRelations() {
-        return new ArrayList<>(conceptualRelations); // Return a copy to prevent external modification
-    }
-
-    // --- Setters / Modifiers ---
-
-    public void setActivation(double activation) {
-        this.activation = activation;
-    }
-
+    public void setPrimaryRole(String role) { this.primaryRole = role; }
+    public void setActivation(double activation) { this.activation = activation; }
+    
     public void increaseActivation(double amount) {
-        this.activation += amount;
-        // Optionally cap activation at 1.0 to prevent runaway values
-        if (this.activation > 1.0) {
-            this.activation = 1.0;
-        }
+        this.activation = Math.min(1.0, this.activation + amount);
     }
 
     public void applyDecay() {

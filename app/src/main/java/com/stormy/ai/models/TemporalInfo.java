@@ -1,14 +1,13 @@
 package com.stormy.ai.models;
 
+import java.io.Serializable;
+
 /**
- * Represents temporal information associated with a SemanticNode or a concept.
- * This is a simplified representation for demonstration, allowing a 'start time'
- * and 'end time' (which could be years, specific dates, or relative markers).
- * In a real-world scenario, this would be much more sophisticated (e.g., ISO 8601,
- * temporal relations like 'before', 'after', 'during').
+ * Represents temporal information.
  */
-public class TemporalInfo {
-    private String rawTemporalExpression; // The original temporal phrase (e.g., "last year", "in 1990")
+public class TemporalInfo implements Serializable {
+    private static final long serialVersionUID = 1L;
+    private String rawTemporalExpression;
     private Long startTimeMillis;         // Numeric representation of start time (e.g., milliseconds since epoch, or a year)
     private Long endTimeMillis;           // Numeric representation of end time
 

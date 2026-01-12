@@ -1,5 +1,6 @@
 package com.stormy.ai;
 
+import android.content.Context;
 import com.stormy.ai.models.AnswerResult;
 import com.stormy.ai.models.ConceptRelation;
 import com.stormy.ai.models.DynamicMemoryBuffer;
@@ -29,6 +30,7 @@ public class QnAProcessor {
     private AnswerExtractor answerExtractor;
     private LearningEngine learningEngine;
     private DynamicMemoryBuffer memoryBuffer;
+    private KnowledgeStorage storage;
     
     private final StringBuilder reasoningSummary = new StringBuilder();
     private final LinkedList<Double> recentConfidences = new LinkedList<>();
@@ -37,7 +39,12 @@ public class QnAProcessor {
     private boolean isNetworkBuilt = false;
 
     private QnAProcessor() {
+    }
+
+    public void initialize(Context context) {
+        this.storage = new KnowledgeStorage(context);
         initComponents();
+        loadKnowledge();
     }
 
     private void initComponents() {
@@ -48,6 +55,14 @@ public class QnAProcessor {
         this.answerExtractor = new AnswerExtractor(reasoningSummary, activationThreshold, 0.1);
         this.learningEngine = new LearningEngine(reasoningSummary);
         this.memoryBuffer = new DynamicMemoryBuffer();
+    }
+
+    private void loadKnowledge() {
+        List<Rule> savedRules = storage.loadRules();
+        for (Rule r : savedRules) ruleEngine.addRule(r);
+
+        List<ConceptRelation> savedRelations = storage.loadConceptualRelations();
+        for (ConceptRelation cr : savedRelations) conceptualKnowledgeBase.addConceptualRelation(cr);
     }
 
     public static synchronized QnAProcessor getInstance() {
@@ -101,6 +116,11 @@ public class QnAProcessor {
         setDecayRate(params[1]);
 
         learningEngine.considerGeneratingRule(context, question, result, semanticNetwork, ruleEngine, activationThreshold);
+
+        if (storage != null) {
+            storage.saveRules(ruleEngine.getRules());
+            storage.saveConceptualRelations(conceptualKnowledgeBase.getConceptualRelations());
+        }
 
         if (result.isValid()) memoryBuffer.addResult(result);
     }

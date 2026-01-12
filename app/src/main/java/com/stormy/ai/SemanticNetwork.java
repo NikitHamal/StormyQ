@@ -3,6 +3,7 @@ package com.stormy.ai;
 import com.stormy.ai.models.SemanticEdge;
 import com.stormy.ai.models.SemanticNode;
 import com.stormy.ai.models.TemporalInfo;
+import com.stormy.ai.nlp.SyntacticParser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,12 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Optimized semantic network construction and management.
+ * Optimized semantic network construction with syntactic intelligence.
  */
 public class SemanticNetwork {
 
     private final Map<String, SemanticNode> nodes = new HashMap<>();
     private final Map<SemanticNode, List<SemanticEdge>> adjacencyList = new HashMap<>();
+    private final SyntacticParser syntacticParser = new SyntacticParser();
 
     private double decayRate;
     private static final int WINDOW_SIZE = 5;
@@ -67,17 +69,44 @@ public class SemanticNetwork {
                 addEdgeInternal(target, source, negated);
             }
         }
+
+        // Phase 3: Syntactic SVO Intelligence
+        String[] sentences = TextUtils.splitSentences(context);
+        for (String sentence : sentences) {
+            List<SyntacticParser.SVOTriplet> triplets = syntacticParser.parse(sentence);
+            for (SyntacticParser.SVOTriplet triplet : triplets) {
+                SemanticNode s = nodes.get(triplet.subject);
+                SemanticNode v = nodes.get(triplet.verb);
+                SemanticNode o = nodes.get(triplet.object);
+
+                if (s != null && v != null) {
+                    addEdgeInternal(s, v, false, SemanticEdge.EdgeType.ACTION);
+                }
+                if (v != null && o != null) {
+                    addEdgeInternal(v, o, false, SemanticEdge.EdgeType.OBJECT);
+                }
+                if (s != null && o != null) {
+                    addEdgeInternal(s, o, false, SemanticEdge.EdgeType.SUBJECT);
+                }
+            }
+        }
     }
 
     private void addEdgeInternal(SemanticNode source, SemanticNode target, boolean negated) {
+        addEdgeInternal(source, target, negated, SemanticEdge.EdgeType.CO_OCCURRENCE);
+    }
+
+    private void addEdgeInternal(SemanticNode source, SemanticNode target, boolean negated, SemanticEdge.EdgeType type) {
         List<SemanticEdge> edges = adjacencyList.computeIfAbsent(source, k -> new ArrayList<>());
         for (SemanticEdge edge : edges) {
-            if (edge.getTarget().equals(target)) {
-                edge.setWeight(edge.getWeight() + (negated ? 0.03 : 0.1));
+            if (edge.getTarget().equals(target) && edge.getType() == type) {
+                edge.setWeight(edge.getWeight() + (negated ? 0.05 : 0.15));
                 return;
             }
         }
-        edges.add(new SemanticEdge(source, target, negated ? 0.2 : 0.5));
+        SemanticEdge newEdge = new SemanticEdge(source, target, negated ? 0.3 : 0.6);
+        newEdge.setType(type);
+        edges.add(newEdge);
     }
 
     public SemanticNode getNode(String name) { return nodes.get(name); }

@@ -1,13 +1,14 @@
 package com.stormy.ai.models;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Represents a higher-level conceptual relationship between two entities (SemanticNodes).
- * This can be used to model ontological knowledge or factual relationships beyond simple co-occurrence.
- * Examples: IS_A (cat IS_A animal), HAS_PART (car HAS_PART wheel), CAUSES (rain CAUSES wetness).
+ * Represents a higher-level conceptual relationship.
  */
-public class ConceptRelation {
+public class ConceptRelation implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
     public enum RelationType {
         IS_A,       // A is a type of B (e.g., "cat IS_A animal")
         PART_OF,    // A is a part of B (e.g., "wheel PART_OF car")

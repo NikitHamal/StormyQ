@@ -3,19 +3,22 @@ package com.stormy.ai;
 import com.stormy.ai.models.AnswerResult;
 import com.stormy.ai.models.SemanticNode;
 import com.stormy.ai.models.TemporalInfo;
+import com.stormy.ai.nlp.SyntacticParser;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Optimally extracts the most relevant answer from the context.
+ * Enhanced extractor using Bayesian Inference and Syntactic roles.
  */
 public class AnswerExtractor {
 
     private final StringBuilder reasoningSummary;
     private double activationThreshold;
     private double sentimentBoostFactor;
+    private final InferenceEngine inferenceEngine = new InferenceEngine();
+    private final SyntacticParser syntacticParser = new SyntacticParser();
 
     public AnswerExtractor(StringBuilder reasoningSummary, double initialActivationThreshold, double sentimentBoostFactor) {
         this.reasoningSummary = reasoningSummary;
@@ -134,6 +137,11 @@ public class AnswerExtractor {
                                  List<String> qKeywords, List<String> origQWords, boolean isTimeQuery) {
         double sum = 0;
         int active = 0;
+        boolean roleMatch = false;
+
+        String phraseStr = String.join(" ", tokens);
+        List<SyntacticParser.SVOTriplet> pTriplets = syntacticParser.parse(phraseStr);
+        
         for (String t : tokens) {
             SemanticNode n = network.getNode(TextUtils.stem(t));
             if (n != null && n.getActivation() >= activationThreshold) {
@@ -143,14 +151,19 @@ public class AnswerExtractor {
         }
 
         double density = (double) active / tokens.size();
-        double score = sum * density / (1.0 + Math.log(tokens.size()));
+        double prior = Math.min(0.9, sum * density / (1.0 + Math.log(tokens.size())));
 
-        if (isTimeQuery) {
-            TemporalInfo pTemp = TextUtils.extractTemporalInfo(String.join(" ", tokens));
-            if (pTemp != null) score += 0.5;
-        }
+        TemporalInfo pTemp = TextUtils.extractTemporalInfo(phraseStr);
+        int pSentiment = TextUtils.getSentimentScore(phraseStr);
 
-        return score;
+        InferenceEngine.Evidence evidence = new InferenceEngine.Evidence(
+            active > 0,
+            !pTriplets.isEmpty(), // Role match simplified
+            (qTemp != null && pTemp != null && qTemp.getStartTimeMillis().equals(pTemp.getStartTimeMillis())),
+            (qSentiment != 0 && pSentiment != 0 && Integer.signum(qSentiment) == Integer.signum(pSentiment))
+        );
+
+        return inferenceEngine.calculateProbability(prior, evidence);
     }
 
     public void setActivationThreshold(double activationThreshold) { this.activationThreshold = activationThreshold; }
