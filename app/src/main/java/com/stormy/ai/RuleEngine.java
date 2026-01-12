@@ -67,6 +67,11 @@ public class RuleEngine {
         rules.add(rule);
     }
 
+    public boolean removeRuleByDescription(String description) {
+        if (description == null) return false;
+        return rules.removeIf(r -> r.getDescription().equalsIgnoreCase(description.trim()));
+    }
+
     public List<Rule> getRules() { return new ArrayList<>(rules); }
     public void setActivationThreshold(double threshold) { this.activationThreshold = threshold; }
     public void resetRulesToDefaults() {

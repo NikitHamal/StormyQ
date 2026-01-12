@@ -50,6 +50,13 @@ public class ConceptualKnowledgeBase {
         relations.add(rel);
     }
 
+    public boolean removeConceptualRelationByDetails(String source, String target, ConceptRelation.RelationType type) {
+        if (source == null || target == null || type == null) return false;
+        String s = TextUtils.stem(source);
+        String t = TextUtils.stem(target);
+        return relations.removeIf(r -> r.getSourceConcept().equals(s) && r.getTargetConcept().equals(t) && r.getType() == type);
+    }
+
     public List<ConceptRelation> getConceptualRelations() { return new ArrayList<>(relations); }
     public void resetKnowledgeBaseToDefaults() {
         relations.clear();

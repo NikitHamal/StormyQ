@@ -1,3 +1,5 @@
+package com.stormy.ai.models;
+
 import java.io.Serializable;
 
 /**

@@ -14,7 +14,8 @@ import com.stormy.ai.nlp.TemporalProcessor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet; 
+import java.util.Calendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -25,6 +26,16 @@ public class TextUtils {
     private static final PorterStemmer stemmer = new PorterStemmer();
     private static final SentimentAnalyzer sentimentAnalyzer = new SentimentAnalyzer();
     private static final TemporalProcessor temporalProcessor = new TemporalProcessor();
+
+    private static final Set<String> POSITIVE_WORDS = new HashSet<>(Arrays.asList(
+            "good", "great", "excellent", "wonderful", "amazing", "happy", "joy", "positive", "beautiful", "love",
+            "best", "fantastic", "awesome", "perfect", "strong", "success", "benefit", "advantage", "clear", "bright"
+    ));
+
+    private static final Set<String> NEGATIVE_WORDS = new HashSet<>(Arrays.asList(
+            "bad", "terrible", "horrible", "awful", "sad", "unhappy", "negative", "ugly", "hate",
+            "worst", "disaster", "poor", "weak", "failure", "problem", "issue", "difficult", "dark", "trouble"
+    ));
 
     // A basic set of common English stop words.
     private static final Set<String> STOP_WORDS = new HashSet<>(Arrays.asList(
@@ -58,7 +69,7 @@ public class TextUtils {
     }
 
     public static String[] splitSentences(String text) {
-        return text.split("(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s+");
+        return text.split("(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s+");
     }
 
     public static boolean isPotentialAnswer(String text) {

@@ -125,27 +125,108 @@ public class QnAProcessor {
         if (result.isValid()) memoryBuffer.addResult(result);
     }
 
-    public void resetProcessorState() {
-        isNetworkBuilt = false;
-        lastContext = "";
-        initComponents();
+        public void resetProcessorState() {
+
+            isNetworkBuilt = false;
+
+            lastContext = "";
+
+            initComponents();
+
+        }
+
+    
+
+        // Delegation & Setters
+
+        public double getDecayRate() { return decayRate; }
+
+        public double getActivationThreshold() { return activationThreshold; }
+
+    
+
+        public void setDecayRate(double rate) {
+
+            this.decayRate = rate;
+
+            semanticNetwork.setDecayRate(rate);
+
+        }
+
+    
+
+        public void setActivationThreshold(double threshold) {
+
+            this.activationThreshold = threshold;
+
+            spreadingActivator.setActivationThreshold(threshold);
+
+            ruleEngine.setActivationThreshold(threshold);
+
+            answerExtractor.setActivationThreshold(threshold);
+
+        }
+
+    
+
+        public boolean removeRuleByDescription(String desc) {
+
+            return ruleEngine.removeRuleByDescription(desc);
+
+        }
+
+    
+
+        public boolean removeConceptualRelationByDetails(String s, String t, ConceptRelation.RelationType type) {
+
+            return conceptualKnowledgeBase.removeConceptualRelationByDetails(s, t, type);
+
+        }
+
+    
+
+        public void resetKnowledgeBaseToDefaults() {
+
+            ruleEngine.resetRulesToDefaults();
+
+            conceptualKnowledgeBase.resetKnowledgeBaseToDefaults();
+
+            isNetworkBuilt = false;
+
+        }
+
+    
+
+        public void resetAdaptiveParametersAndMemory() {
+
+            this.decayRate = 0.1;
+
+            this.activationThreshold = 0.05;
+
+            this.recentConfidences.clear();
+
+            this.memoryBuffer.clear();
+
+            setActivationThreshold(0.05);
+
+            setDecayRate(0.1);
+
+            isNetworkBuilt = false;
+
+        }
+
+    
+
+        public String getReasoningSummary() { return reasoningSummary.toString(); }
+
+        public List<Rule> getRules() { return ruleEngine.getRules(); }
+
+        public void addRule(Rule rule) { ruleEngine.addRule(rule); }
+
+        public List<ConceptRelation> getConceptualKnowledgeBase() { return conceptualKnowledgeBase.getConceptualRelations(); }
+
+        public void addConceptualRelation(ConceptRelation rel) { conceptualKnowledgeBase.addConceptualRelation(rel); }
+
     }
 
-    // Delegation & Setters
-    public void setDecayRate(double rate) {
-        this.decayRate = rate;
-        semanticNetwork.setDecayRate(rate);
-    }
-
-    public void setActivationThreshold(double threshold) {
-        this.activationThreshold = threshold;
-        spreadingActivator.setActivationThreshold(threshold);
-        ruleEngine.setActivationThreshold(threshold);
-        answerExtractor.setActivationThreshold(threshold);
-    }
-
-    public String getReasoningSummary() { return reasoningSummary.toString(); }
-    public List<Rule> getRules() { return ruleEngine.getRules(); }
-    public void addRule(Rule rule) { ruleEngine.addRule(rule); }
-    public List<ConceptRelation> getConceptualKnowledgeBase() { return conceptualKnowledgeBase.getConceptualRelations(); }
-}
+    

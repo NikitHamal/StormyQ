@@ -92,6 +92,10 @@ public class SemanticNetwork {
         }
     }
 
+    public void addEdge(SemanticNode source, SemanticNode target, boolean negated) {
+        addEdgeInternal(source, target, negated);
+    }
+
     private void addEdgeInternal(SemanticNode source, SemanticNode target, boolean negated) {
         addEdgeInternal(source, target, negated, SemanticEdge.EdgeType.CO_OCCURRENCE);
     }

@@ -29,6 +29,7 @@ public class SemanticNode implements Serializable {
 
     public String getName() { return name; }
     public double getActivation() { return activation; }
+    public boolean isActivatedThisCycle() { return activatedThisCycle; }
     public TemporalInfo getTemporalInfo() { return temporalInfo; }
     public boolean isNegated() { return isNegated; }
     public List<ConceptRelation> getConceptualRelations() { return new ArrayList<>(conceptualRelations); }
